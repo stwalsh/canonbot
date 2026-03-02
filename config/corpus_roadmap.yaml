@@ -1,0 +1,93 @@
+# Corpus Roadmap — Canon Bot
+# Tracks what's in the corpus, what's queued, and what's on the wish list.
+
+current:
+  eebo_tcp:
+    description: "EEBO-TCP Phase I & II (TEI-XML, CC0)"
+    coverage: "1473–1700"
+    poets: 26
+    chunks: ~29000
+    status: complete
+
+  obev:
+    description: "Oxford Book of English Verse (Gutenberg #66619)"
+    coverage: "1250–1900"
+    poems: ~900
+    poets: ~250
+    status: parsing
+
+  lucasta:
+    description: "Lucasta by Richard Lovelace (Gutenberg #703)"
+    coverage: "1649"
+    poems: ~80
+    status: parsing
+
+queued:
+  - id: "gutenberg_1934"
+    title: "Songs of Innocence and Experience"
+    author: "William Blake"
+    gutenberg_id: 1934
+    format: plaintext
+
+  - id: "gutenberg_9622"
+    title: "Lyrical Ballads"
+    author: "Wordsworth & Coleridge"
+    gutenberg_id: 9622
+    format: plaintext
+
+  - id: "gutenberg_23684"
+    title: "Poems"
+    author: "John Keats"
+    gutenberg_id: 23684
+    format: plaintext
+
+  - id: "rochester"
+    title: "Poems (cleaner edition)"
+    author: "John Wilmot, Earl of Rochester"
+    notes: "Needs research for best Gutenberg source"
+
+  - id: "shelley_selected"
+    title: "Selected poems"
+    author: "Percy Bysshe Shelley"
+    notes: "Multiple Gutenberg sources available"
+
+  - id: "tennyson_selected"
+    title: "Selected poems"
+    author: "Alfred, Lord Tennyson"
+    notes: "Multiple Gutenberg sources available"
+
+wish_list:
+  - author: "John Suckling"
+    title: "Fragmenta Aurea"
+  - author: "Thomas Carew"
+    title: "Poems"
+  - author: "Christina Rossetti"
+    title: "Selected poems"
+  - author: "Emily Dickinson"
+    title: "Public domain selections"
+  - author: "Gerard Manley Hopkins"
+    title: "Poems (1918 Bridges edition)"
+  - author: "Thomas Hardy"
+    title: "Wessex Poems"
+  - author: "Elizabeth Barrett Browning"
+    title: "Sonnets from the Portuguese"
+  - author: "Robert Browning"
+    title: "Men and Women"
+
+sources:
+  eebo_tcp:
+    format: "TEI-XML"
+    license: "CC0"
+    coverage: "1473–1700"
+  project_gutenberg:
+    format: "HTML / plain text"
+    license: "Public domain"
+    coverage: "Pre-1929 publications"
+  standard_ebooks:
+    format: "Clean HTML/EPUB"
+    license: "CC0"
+    coverage: "Curated editions"
+  ecpa:
+    format: "TEI-XML"
+    license: "CC BY-SA"
+    coverage: "1700–1800 (Pope, Johnson, Gray, Collins, Smart)"

@@ -1,0 +1,73 @@
+# Canon Bot — Corpus Pipeline Configuration
+
+paths:
+  corpus_raw: corpus/raw
+  corpus_chunks: corpus/chunks
+  intermediate: corpus/intermediate
+  eebo_manifest: corpus/eebo_manifest.csv
+
+# EEBO-TCP settings
+eebo:
+  csv_url: "https://raw.githubusercontent.com/textcreationpartnership/Texts/master/TCP.csv"
+  xml_base_url: "https://raw.githubusercontent.com/textcreationpartnership/{tcp_id}/master/{tcp_id}.xml"
+
+# Target poets for EEBO-TCP (pre-1700)
+# These are substring matches against the Author column in TCP.csv
+target_poets:
+  # Complete works
+  - "Shakespeare"
+  - "Milton"
+  - "Donne"
+  - "Herbert, George"
+  - "Marvell"
+  - "Spenser"
+  - "Jonson"
+  - "Herrick"
+  - "Vaughan, Henry"
+  - "Crashaw"
+  - "Sidney"
+  - "Lovelace"
+  - "Marlowe"
+  # Selected
+  - "Drayton"
+  - "Daniel, Samuel"
+  - "Denham"
+  - "Waller"
+  - "Rochester"
+  - "Cowley"
+  - "Traherne"
+  - "Skelton"
+  - "Wyatt"
+  - "Surrey"
+  - "Prior"
+  - "Gay, John"
+
+# Poets to exclude from chunking output (matched by substring on poet name)
+# These come in via shared anthologies or over-broad author matches
+exclude_poets:
+  - "William Vaughan"
+  - "Robert Vaughan"
+  - "Rowland Vaughan"
+  - "Thomas Vaughan"
+  - "Francis Quarles"
+  - "Thomas May"
+
+# Chunking settings
+chunking:
+  min_tokens: 50
+  max_tokens: 300
+  sonnet_line_count: 14
+  short_lyric_max_tokens: 300
+  stanza_group_min_tokens: 50
+
+# Gap patching — clean source URLs
+patch_sources:
+  standard_ebooks_base: "https://raw.githubusercontent.com/standardebooks"
+  gutenberg_mirror: "https://www.gutenberg.org/cache/epub"
+
+# Project Gutenberg sources
+gutenberg:
+  cache_dir: corpus/raw/gutenberg
+  registry_ids:
+    - "66619"  # OBEV — Oxford Book of English Verse
+    - "703"    # Lucasta — Richard Lovelace

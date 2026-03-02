@@ -1,0 +1,10 @@
+lxml>=5.0
+requests>=2.31
+pyyaml>=6.0
+tiktoken>=0.5
+thefuzz[speedup]>=0.22
+chromadb>=0.4
+# Note: sentence-transformers requires PyTorch which lacks Python 3.13 wheels.
+# ChromaDB's built-in ONNXMiniLM_L6_V2 embedding function is used instead.
+# sentence-transformers>=2.2  # uncomment when PyTorch supports Python 3.13
+mcp[cli]>=1.0

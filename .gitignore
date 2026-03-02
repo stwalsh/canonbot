@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+
+# ChromaDB + corpus data (large, reproducible via pipeline)
+data/chroma/
+corpus/raw/
+corpus/intermediate/
+corpus/chunks/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
