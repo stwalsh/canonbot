@@ -1,0 +1,63 @@
+"""ChromaDB retrieval interface for the canon bot brain."""
+
+import chromadb
+from chromadb.utils import embedding_functions
+
+CHROMA_PATH = "data/chroma"
+COLLECTION_NAME = "canon"
+
+_client = None
+_collection = None
+
+
+def _get_collection():
+    global _client, _collection
+    if _collection is None:
+        _client = chromadb.PersistentClient(path=CHROMA_PATH)
+        ef = embedding_functions.ONNXMiniLM_L6_V2()
+        _collection = _client.get_collection(
+            name=COLLECTION_NAME,
+            embedding_function=ef,
+        )
+    return _collection
+
+
+def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) -> list[dict]:
+    """Semantic search over the poetry corpus.
+
+    Args:
+        query: Text to match against.
+        n_results: How many results to return.
+        exclude_ids: Chunk IDs to skip (anti-repetition stub).
+
+    Returns:
+        List of passage dicts with keys: chunk_id, text, poet, work,
+        poem_title, date, period, form, line_range, distance.
+    """
+    col = _get_collection()
+    # Fetch extra if we need to filter some out
+    fetch_n = n_results + len(exclude_ids) if exclude_ids else n_results
+    results = col.query(query_texts=[query], n_results=fetch_n)
+
+    passages = []
+    for i in range(len(results["ids"][0])):
+        chunk_id = results["ids"][0][i]
+        if exclude_ids and chunk_id in exclude_ids:
+            continue
+        meta = results["metadatas"][0][i]
+        passages.append({
+            "chunk_id": chunk_id,
+            "text": results["documents"][0][i],
+            "poet": meta.get("poet", ""),
+            "work": meta.get("work", ""),
+            "poem_title": meta.get("poem_title", ""),
+            "date": meta.get("date", ""),
+            "period": meta.get("period", ""),
+            "form": meta.get("form", ""),
+            "line_range": meta.get("line_range", ""),
+            "distance": results["distances"][0][i],
+        })
+        if len(passages) >= n_results:
+            break
+
+    return passages

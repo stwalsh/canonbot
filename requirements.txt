@@ -8,3 +8,4 @@ chromadb>=0.4
 # ChromaDB's built-in ONNXMiniLM_L6_V2 embedding function is used instead.
 # sentence-transformers>=2.2  # uncomment when PyTorch supports Python 3.13
 mcp[cli]>=1.0
+anthropic>=0.40.0

@@ -10,12 +10,17 @@ Run:
 """
 
 import json
+import os
 import random
+import sys
 from collections import Counter, defaultdict
 
 import chromadb
 from chromadb.utils import embedding_functions
 from mcp.server.fastmcp import FastMCP
+
+# Ensure project root is importable (for src.brain)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ---------------------------------------------------------------------------
 # Server setup
@@ -287,6 +292,33 @@ def random_passage(poet: str | None = None, form: str | None = None) -> dict:
 
     idx = random.randint(0, len(results["documents"]) - 1)
     return _format_result(results["documents"][idx], results["metadatas"][idx])
+
+
+# ---------------------------------------------------------------------------
+# Brain — full triage → retrieval → composition pipeline
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def respond_to_stimulus(stimulus: str) -> dict:
+    """Run a post through the canon bot brain: triage, retrieval, and composition.
+
+    Takes a social media post (or any short text) and decides whether the
+    English poetry canon has something genuine to say about it. If yes,
+    retrieves relevant passages and composes a response in the bot's voice.
+
+    Returns the full pipeline result: triage decision, retrieved passages,
+    and composed post(s) ready for Bluesky.
+
+    Requires ANTHROPIC_API_KEY to be set.
+
+    Args:
+        stimulus: The text to respond to (a post, observation, or question).
+    """
+    import anthropic
+    from src.brain import run
+
+    client = anthropic.Anthropic()
+    return run(client, stimulus)
 
 
 # ---------------------------------------------------------------------------
