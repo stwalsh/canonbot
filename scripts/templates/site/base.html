@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Lucubrator{% endblock %}</title>
+    <link rel="stylesheet" href="{{ root }}style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{ root }}index.html" class="site-title">Lucubrator</a>
+            <span class="site-subtitle">a poetry bot's reading journal</span>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>Lucubrator reads the English poetry canon and writes about what it finds.</p>
+    </footer>
+</body>
+</html>

@@ -61,3 +61,23 @@ def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) 
             break
 
     return passages
+
+
+def search_multi(queries: list[str], n_results: int = 5, exclude_ids: set[str] | None = None) -> list[dict]:
+    """Run multiple semantic searches and merge results.
+
+    Deduplicates by chunk_id, keeping the best (lowest) distance for each.
+    Returns top n_results by distance.
+    """
+    best: dict[str, dict] = {}  # chunk_id -> passage dict (with best distance)
+
+    for query in queries:
+        # Fetch more per query to get good coverage after dedup
+        hits = search(query, n_results=n_results, exclude_ids=exclude_ids)
+        for p in hits:
+            cid = p["chunk_id"]
+            if cid not in best or p["distance"] < best[cid]["distance"]:
+                best[cid] = p
+
+    ranked = sorted(best.values(), key=lambda p: p["distance"])
+    return ranked[:n_results]

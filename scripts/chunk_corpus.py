@@ -145,6 +145,32 @@ def normalize_author(author: str) -> str:
 _AUTHOR_ALIASES = {
     "Henry Howard Surrey": "Henry Howard",
     "Henry Howard Earl of Surrey": "Henry Howard",
+    # Tennyson: various forms from different sources
+    "Alfred": "Alfred Lord Tennyson",
+    "Alfred Tennyson Lord Tennyson": "Alfred Lord Tennyson",
+    "Alfred Tennyson Baron Tennyson": "Alfred Lord Tennyson",
+    # Byron: Delphi gives full name, EEBO/OBEV give shorter
+    "George Gordon": "Lord Byron",
+    "George Gordon Byron Lord Byron": "Lord Byron",
+    "George Gordon Lord Byron": "Lord Byron",
+    # Cowley: popebot couplets use bare surname
+    "Cowley": "Abraham Cowley",
+    # Rochester: multiple variants across sources
+    "John Wilmot": "John Wilmot, Earl of Rochester",
+    "John Wilmot Rochester": "John Wilmot, Earl of Rochester",
+    "John Wilmot Earl of Rochester": "John Wilmot, Earl of Rochester",
+    "Earl of Rochester": "John Wilmot, Earl of Rochester",
+    # Rossetti: Delphi uses full middle name
+    "Christina Georgina Rossetti": "Christina Rossetti",
+    # Yeats: Delphi anthology vs Delphi Poets Series
+    "William Butler Yeats": "W. B. Yeats",
+    # Martial: R. Fletcher's 1656 translation, miscredited in TCP metadata
+    "Martial.": "R. Fletcher",
+    "Martial": "R. Fletcher",
+    # Sidney: TCP drops the Sir
+    "Philip Sidney": "Sir Philip Sidney",
+    # Prelude misattribution from Delphi
+    "Two Book Prelude: Book II": "William Wordsworth",
 }
 
 
@@ -330,7 +356,7 @@ def make_chunk(
 
     chunk_id = f"{poet_slug}-{work_slug}-{poem_slug}-{index:03d}"
 
-    return {
+    chunk = {
         "chunk_id": chunk_id,
         "poet": poet,
         "work": work,
@@ -346,6 +372,10 @@ def make_chunk(
         "source": metadata.get("source", "EEBO-TCP"),
         "tcp_id": metadata.get("tcp_id", ""),
     }
+    speaker = poem.get("speaker", "")
+    if speaker:
+        chunk["speaker"] = speaker
+    return chunk
 
 
 def chunk_poem(poem: dict, metadata: dict, config: dict) -> list[dict]:
@@ -398,6 +428,15 @@ def process_file(json_path: str, config: dict) -> list[dict]:
 
     chunks = []
     poems = data.get("poems", [])
+
+    # Work-level poem filtering: keep only specified poem indices
+    keep_poems = config.get("keep_poems_only", {})
+    file_key = data.get("tcp_id", "") or Path(json_path).stem
+    if file_key in keep_poems:
+        allowed = set(keep_poems[file_key])
+        dropped = len(poems) - len(allowed)
+        poems = [p for i, p in enumerate(poems) if i in allowed]
+        # (dropped count logged by caller)
 
     # Tottel's Miscellany (A03742): re-attribute by section
     # Surrey: poems 0-39, Wyatt: 40-136, Grimald: 137-176, Uncertain: 177+
@@ -512,8 +551,18 @@ def main():
     poet_chunks: dict[str, list[dict]] = defaultdict(list)
     excluded_count = 0
 
+    # Work-level exclusion lists
+    exclude_tcp_ids = set(config.get("exclude_tcp_ids", []))
+    keep_poems_only = config.get("keep_poems_only", {})
+
     for json_path in json_files:
-        print(f"  Chunking {json_path.stem} ...", end=" ", flush=True)
+        # Check if this file should be excluded entirely (stem matches tcp_id for EEBO)
+        stem = json_path.stem
+        if stem in exclude_tcp_ids:
+            print(f"  Skipping {stem} (excluded)")
+            continue
+
+        print(f"  Chunking {stem} ...", end=" ", flush=True)
         chunks = process_file(str(json_path), config)
         print(f"{len(chunks)} chunks")
 

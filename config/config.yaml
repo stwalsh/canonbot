@@ -52,6 +52,47 @@ exclude_poets:
   - "Francis Quarles"
   - "Thomas May"
 
+# Intermediate files to exclude entirely from chunking (by TCP ID or filename stem)
+# Drayton: drop narrative/topographical, keep lyrics and sonnets
+# Daniel: drop Civil Wars, keep Delia sonnets and verse epistles
+exclude_tcp_ids:
+  # Drayton — Poly-Olbion (topographical)
+  - "A20849"   # Poly-Olbion Part 2
+  - "A97346"   # Poly-Olbion Part 1 (chorographical description)
+  - "A20847"   # Poly-Olbion commendatory verses
+  # Drayton — narrative legends
+  - "A20853"   # Tragicall Legend of Robert Duke of Normandy + legends
+  - "A20836"   # Poems 1605 (Barrons Wars)
+  - "A20829"   # Mortimeriados
+  - "A20834"   # Peirs Gaveston
+  - "A20826"   # Matilda
+  - "A20825"   # Legend of Great Cromwell
+  - "A20822"   # Heavenly Harmonie (duplicate of A20818)
+  # Daniel — Civil Wars (three overlapping editions)
+  - "A19811"   # Whole Works (all Civil Wars)
+  - "A19821"   # Civil Wars 1609
+  - "A19834"   # Poeticall Essayes (Civil Wars 1-5)
+  - "A19828"   # Funerall Poem (minor occasional)
+
+# For mixed files: keep only poems at these indices (0-based)
+# Poems not listed are dropped at chunking time
+keep_poems_only:
+  # A73861: Drayton 1631 — drop Battaile of Agincourt [0] and Miseries of Queen Margaret [1]
+  "A73861": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  # A20811: Drayton — drop Barrons Wars [0-5], keep Idea sonnets + epistles [6-77]
+  "A20811": [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77]
+  # A19812: Daniel — drop Octavia [0] + Complaint of Rosamond [1], keep Ode [2] + Pastorall [3]
+  "A19812": [2, 3]
+  # GUT_coleridge-complete: keep only the ~25 canonical poems
+  # Big Three: Ancient Mariner, Kubla Khan, Christabel
+  # Conversation poems: Eolian Harp, Reflections, Lime-Tree Bower, Frost at Midnight,
+  #   Fears in Solitude, The Nightingale, To William Wordsworth
+  # Major odes: Dejection, France: An Ode
+  # Strong shorter: Work Without Hope, Constancy to an Ideal Object, Pains of Sleep,
+  #   Limbo, Ne Plus Ultra, Youth and Age, Human Life, Phantom or Fact, Self-Knowledge,
+  #   Love, Hymn Before Sun-Rise, Phantom, On Donne's Poetry
+  "GUT_coleridge-complete": [96, 99, 122, 125, 128, 131, 132, 136, 137, 143, 167, 185, 188, 196, 201, 210, 229, 234, 235, 237, 241, 245, 250, 270, 276]
+
 # Chunking settings
 chunking:
   min_tokens: 50
@@ -65,9 +106,39 @@ patch_sources:
   standard_ebooks_base: "https://raw.githubusercontent.com/standardebooks"
   gutenberg_mirror: "https://www.gutenberg.org/cache/epub"
 
+# Engine — platform-agnostic rate limiting
+engine:
+  max_responses_per_hour: 10
+  max_responses_per_day: 20
+  anti_repetition_hours: 48
+  cooldown_after_post_seconds: 60
+
+# Bluesky adapter
+bluesky:
+  jetstream_url: "wss://jetstream1.us-east.bsky.network/subscribe"
+  timeline_poll_interval_seconds: 900
+  firehose_keywords:
+    - death
+    - grief
+    - memory
+    - ambition
+    - failure
+    - power
+    - language
+    - silence
+    - war
+    - beauty
+    - time
+    - solitude
+    - god
+    - hypocrisy
+    - authority
+    - corruption
+
 # Project Gutenberg sources
 gutenberg:
   cache_dir: corpus/raw/gutenberg
   registry_ids:
     - "66619"  # OBEV — Oxford Book of English Verse
     - "703"    # Lucasta — Richard Lovelace
+    - "pope"   # Alexander Pope — couplets from popebot

@@ -86,9 +86,8 @@ def main():
         print(f"\n  COMPOSITION: {comp['decision'].upper()}")
         if comp["decision"] == "post":
             for k, post in enumerate(comp["posts"], 1):
-                text = post["text"] if isinstance(post, dict) else post
-                print(f"    Post {k} ({len(text)} chars):")
-                print(f"      {text}")
+                print(f"    Post {k} ({len(post)} chars):")
+                print(f"      {post}")
             pu = comp.get("passage_used", {})
             if pu:
                 print(f"    Passage used: {pu.get('poet', '?')} — \"{pu.get('poem_title', '?')}\"")

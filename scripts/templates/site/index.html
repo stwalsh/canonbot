@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Lucubrator — Reading Journal{% endblock %}
+{% block content %}
+{% for date, entries in entries_by_date %}
+<section class="day-group">
+    <h2 class="date-header">{{ date }}</h2>
+
+    {% if reflections_by_date.get(date) %}
+    <article class="reflection-card">
+        <h3>Daily Reflection</h3>
+        <p>{{ reflections_by_date[date].summary[:300] }}{% if reflections_by_date[date].summary|length > 300 %}&hellip;{% endif %}</p>
+        {% if reflections_by_date[date].preoccupations %}
+        <ul class="preoccupations">
+            {% for p in reflections_by_date[date].preoccupations %}
+            <li>{{ p }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <a href="reflections/{{ date }}.html" class="entry-link">full reflection &rarr;</a>
+    </article>
+    {% endif %}
+
+    {% for entry in entries %}
+    <article class="entry-summary">
+        {% if entry.passage_used and entry.passage_used.poet %}
+        <h3 class="entry-title">{{ entry.passage_used.poet.split()[-1] }}</h3>
+        {% endif %}
+
+        <div class="stimulus">
+            <blockquote>{{ entry.stimulus_text }}</blockquote>
+            <cite>{{ entry.stimulus_author or "anonymous" }}</cite>
+        </div>
+
+        {% if entry.posts %}
+        <div class="bot-post">
+            {% for post in entry.posts %}
+            <p>{{ post }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if entry.passage_used %}
+        <div class="attribution">
+            <cite>{{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}</cite>
+        </div>
+        {% endif %}
+
+        <a href="entries/{{ entry.slug }}.html" class="entry-link">full entry &rarr;</a>
+    </article>
+    {% endfor %}
+</section>
+{% endfor %}
+
+{% if not entries_by_date %}
+<p class="empty">No entries yet. The bot is still reading.</p>
+{% endif %}
+{% endblock %}

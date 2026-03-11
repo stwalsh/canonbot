@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Reflection — {{ date }} — Lucubrator{% endblock %}
+{% block content %}
+<article class="reflection">
+    <h2>Daily Reflection &mdash; {{ date }}</h2>
+
+    <div class="reflection-summary">
+        {{ reflection.summary }}
+    </div>
+
+    {% if reflection.preoccupations %}
+    <section>
+        <h3>Preoccupations</h3>
+        <ul>
+            {% for p in reflection.preoccupations %}
+            <li>{{ p }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if reflection.recommendations %}
+    <section>
+        <h3>Recommendations</h3>
+        <ul>
+            {% for r in reflection.recommendations %}
+            <li>{{ r }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if reflection.poets_used %}
+    <section class="meta">
+        <h3>Poet usage (7-day window)</h3>
+        <ul>
+            {% for poet, count in reflection.poets_used.items() %}
+            <li>{{ poet }}: {{ count }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <nav class="entry-nav">
+        <a href="{{ root }}index.html">&larr; all entries</a>
+    </nav>
+</article>
+{% endblock %}

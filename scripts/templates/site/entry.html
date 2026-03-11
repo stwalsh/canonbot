@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.date }} — Lucubrator{% endblock %}
+{% block content %}
+<article class="entry-full">
+    <h2 class="entry-date">{{ entry.date }}</h2>
+
+    <section class="triptych">
+        <div class="stimulus">
+            <h3>Stimulus</h3>
+            <blockquote>{{ entry.stimulus_text }}</blockquote>
+            <cite>{{ entry.stimulus_author or "anonymous" }}</cite>
+        </div>
+
+        {% if entry.posts %}
+        <div class="bot-post">
+            <h3>Response</h3>
+            {% for post in entry.posts %}
+            <p>{{ post }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if entry.passage_used %}
+        <div class="attribution">
+            <cite>{{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}</cite>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="meta">
+        <h3>Pipeline</h3>
+        <dl>
+            {% if entry.triage_reason %}
+            <dt>Triage</dt>
+            <dd>{{ entry.triage_reason }}</dd>
+            {% endif %}
+            {% if entry.the_problem %}
+            <dt>The problem</dt>
+            <dd>{{ entry.the_problem }}</dd>
+            {% endif %}
+            {% if entry.triage_queries %}
+            <dt>Search queries</dt>
+            <dd>{{ entry.triage_queries | join(", ") }}</dd>
+            {% endif %}
+            {% if entry.composition_mode %}
+            <dt>Composition mode</dt>
+            <dd>{{ entry.composition_mode }}</dd>
+            {% endif %}
+            {% if entry.passage_used and entry.passage_used.chunk_id %}
+            <dt>Chunk ID</dt>
+            <dd><code>{{ entry.passage_used.chunk_id }}</code></dd>
+            {% endif %}
+            <dt>Source</dt>
+            <dd>{{ entry.source or "unknown" }}</dd>
+        </dl>
+    </section>
+
+    <nav class="entry-nav">
+        <a href="{{ root }}index.html">&larr; all entries</a>
+    </nav>
+</article>
+{% endblock %}

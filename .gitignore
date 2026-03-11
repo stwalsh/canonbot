@@ -4,11 +4,12 @@ __pycache__/
 *.egg-info/
 venv/
 
-# ChromaDB + corpus data (large, reproducible via pipeline)
-data/chroma/
+# Data (large, reproducible, or runtime-generated)
+data/
 corpus/raw/
 corpus/intermediate/
 corpus/chunks/
+corpus/blake_erdman/
 
 # OS
 .DS_Store
@@ -16,6 +17,9 @@ corpus/chunks/
 # IDE
 .vscode/
 .idea/
+
+# Secrets
+.env
 
 # Claude Code
 .claude/

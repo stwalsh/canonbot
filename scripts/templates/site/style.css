@@ -1,0 +1,115 @@
+/* Lucubrator — minimal reading journal */
+
+:root {
+    --text: #1a1a1a;
+    --bg: #fafaf7;
+    --muted: #666;
+    --border: #ddd;
+    --accent: #8b4513;
+    --verse-bg: #f5f3ee;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* Header */
+header { margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+.site-title { font-size: 1.4rem; font-weight: 700; color: var(--text); text-decoration: none; }
+.site-subtitle { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* Date groups */
+.date-header { font-size: 1.3rem; font-weight: 700; color: var(--text); margin: 2.5rem 0 1rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; }
+
+/* Reflection card (index page) */
+.reflection-card { margin-bottom: 2rem; padding: 1.2rem; background: var(--verse-bg); border-radius: 4px; }
+.reflection-card h3 { font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 0.8rem; }
+.reflection-card p { font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.8rem; }
+.reflection-card .preoccupations { margin: 0.8rem 0 0.8rem 1.2rem; font-size: 0.85rem; }
+.reflection-card .preoccupations li { margin-bottom: 0.3rem; }
+
+/* Entry summaries (index page) */
+.entry-summary { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.entry-summary:last-child { border-bottom: none; }
+.entry-title { font-family: Georgia, "Times New Roman", serif; font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 0.6rem; }
+
+/* Stimulus */
+blockquote {
+    font-size: 0.95rem;
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1rem;
+    margin: 0.5rem 0;
+    background: rgba(139, 69, 19, 0.03);
+}
+cite { display: block; font-size: 0.8rem; color: var(--muted); font-style: normal; margin-top: 0.3rem; }
+
+/* Bot post */
+.bot-post { margin: 1rem 0; }
+.bot-post p { margin-bottom: 0.5rem; }
+
+/* Attribution */
+.attribution { margin: 0.5rem 0; }
+.attribution cite { font-style: italic; }
+
+/* Verse passage */
+.verse {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    background: var(--verse-bg);
+    padding: 1rem 1.2rem;
+    border-radius: 3px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+.passage { margin: 1rem 0; }
+.passage cite { margin-top: 0.5rem; font-style: italic; }
+
+/* Entry link */
+.entry-link { font-size: 0.8rem; color: var(--accent); }
+
+/* Full entry page */
+.entry-full h2 { font-size: 1.1rem; color: var(--muted); margin-bottom: 1.5rem; }
+.triptych h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.5rem; }
+.triptych > div { margin-bottom: 1.5rem; }
+
+/* Pipeline details */
+section.meta { margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+section.meta h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.5rem; }
+section.meta dl { font-size: 0.8rem; }
+section.meta dt { font-weight: 600; color: var(--muted); margin-top: 0.5rem; }
+section.meta dd { margin-left: 0; color: var(--text); }
+section.meta code { font-size: 0.75rem; background: var(--verse-bg); padding: 0.1rem 0.3rem; border-radius: 2px; }
+
+/* Reflection page */
+.reflection h2 { font-size: 1.1rem; color: var(--muted); margin-bottom: 1.5rem; }
+.reflection-summary { margin-bottom: 1.5rem; line-height: 1.7; }
+.reflection h3 { font-size: 0.9rem; margin: 1.5rem 0 0.5rem; }
+.reflection ul { margin-left: 1.2rem; }
+.reflection li { margin-bottom: 0.3rem; }
+
+/* Navigation */
+.entry-nav { margin-top: 2rem; }
+.entry-nav a { font-size: 0.85rem; color: var(--accent); }
+
+/* Footer */
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+
+/* Empty state */
+.empty { color: var(--muted); font-style: italic; margin: 2rem 0; }
+
+/* Mobile */
+@media (max-width: 600px) {
+    body { padding: 1rem 0.75rem; }
+    blockquote { padding: 0.4rem 0.8rem; }
+    .verse { padding: 0.8rem; font-size: 0.85rem; }
+}

@@ -25,7 +25,7 @@ def load_config(config_path: str = "config/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-BATCH_SIZE = 5000
+BATCH_SIZE = 100
 
 
 def ingest_all(chunks_dir: str, chroma_path: str) -> int:
@@ -84,6 +84,8 @@ def ingest_all(chunks_dir: str, chroma_path: str) -> int:
                     meta["stanza_range"] = chunk["stanza_range"]
                 if chunk.get("tcp_id"):
                     meta["tcp_id"] = chunk["tcp_id"]
+                if chunk.get("speaker"):
+                    meta["speaker"] = chunk["speaker"]
 
                 batch_ids.append(chunk_id)
                 batch_docs.append(chunk_text)

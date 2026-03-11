@@ -42,6 +42,14 @@ REGISTRY = {
         "date": "1649",
         "filename": "pg703.txt",
     },
+    "pope": {
+        "format": "couplets_txt",
+        "type": "single_author",
+        "path": "corpus/raw/couplets.txt",
+        "title": "Poetical Works (non-Homer)",
+        "author": "Alexander Pope",
+        "date": "1734",
+    },
 }
 
 
@@ -490,6 +498,46 @@ def _clean_title(title: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Pope couplets parser
+# ---------------------------------------------------------------------------
+
+def parse_pope_couplets(text_path: str) -> dict:
+    """Parse Pope couplets file (lines separated by '---') into intermediate JSON."""
+    with open(text_path, encoding="utf-8") as f:
+        raw = f.read()
+
+    # Split on --- delimiters
+    blocks = re.split(r"^---\s*$", raw, flags=re.MULTILINE)
+
+    stanzas = []
+    for block in blocks:
+        lines = [l.strip() for l in block.strip().split("\n") if l.strip()]
+        if lines:
+            stanzas.append({
+                "stanza_num": "",
+                "lines": lines,
+                "gaps": [],
+            })
+
+    # Single poem containing all couplets as stanzas
+    poems = [{
+        "title": "Poetical Works (non-Homer)",
+        "stanzas": stanzas,
+    }]
+
+    return {
+        "tcp_id": "",
+        "gutenberg_id": "",
+        "author": "Alexander Pope",
+        "title": "Poetical Works (non-Homer)",
+        "date": "1734",
+        "source": "Pope couplets (popebot)",
+        "poems": poems,
+        "gap_log": [],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main orchestration
 # ---------------------------------------------------------------------------
 
@@ -500,10 +548,24 @@ def parse_gutenberg(gutenberg_id: str, cache_dir: str, output_dir: str) -> list[
         return []
 
     entry = REGISTRY[gutenberg_id]
-    local_path = download_or_cache(gutenberg_id, cache_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     output_files = []
+
+    if entry["format"] == "couplets_txt":
+        # Local file, no download needed
+        local_path = entry["path"]
+        record = parse_pope_couplets(local_path)
+        filename = f"POPE_couplets.json"
+        out_path = os.path.join(output_dir, filename)
+        with open(out_path, "w") as f:
+            json.dump(record, f, indent=2, ensure_ascii=False)
+        output_files.append(out_path)
+        stanza_count = len(record["poems"][0]["stanzas"])
+        print(f"  {record['author']}: {stanza_count} couplets → {filename}")
+        return output_files
+
+    local_path = download_or_cache(gutenberg_id, cache_dir)
 
     if entry["format"] == "html" and entry["type"] == "anthology":
         poet_records = parse_obev_html(local_path)

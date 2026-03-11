@@ -20,7 +20,14 @@ current:
     description: "Lucasta by Richard Lovelace (Gutenberg #703)"
     coverage: "1649"
     poems: ~80
-    status: parsing
+    status: complete
+
+  pope_couplets:
+    description: "Alexander Pope — Poetical Works (non-Homer), from popebot couplets"
+    coverage: "1709–1744"
+    couplets: 6616
+    chunks: ~2322
+    status: complete
 
 queued:
   - id: "gutenberg_1934"
@@ -28,6 +35,14 @@ queued:
     author: "William Blake"
     gutenberg_id: 1934
     format: plaintext
+
+  - id: "blake_prophetic"
+    title: "Marriage of Heaven and Hell + selected prophetic books"
+    author: "William Blake"
+    notes: >
+      EXCEPTION: include prose (Proverbs of Hell, aphorisms). Blake is the one
+      author where the prose is canon-grade and indistinguishable from the poetry
+      in function. Gutenberg #45315 (Poetry and Prose) may be best single source.
 
   - id: "gutenberg_9622"
     title: "Lyrical Ballads"
@@ -46,6 +61,18 @@ queued:
     author: "John Wilmot, Earl of Rochester"
     notes: "Needs research for best Gutenberg source"
 
+  - id: "gutenberg_18762"
+    title: "Don Juan"
+    author: "Lord Byron"
+    gutenberg_id: 18762
+    format: plaintext
+    notes: "16 cantos, ottava rima. One of the longest canonical English poems."
+
+  - id: "byron_selected"
+    title: "Selected shorter poems (Childe Harold, lyrics, etc.)"
+    author: "Lord Byron"
+    notes: "Multiple Gutenberg sources — #6087 (Works vol 1-3), #21811 (Hebrew Melodies)"
+
   - id: "shelley_selected"
     title: "Selected poems"
     author: "Percy Bysshe Shelley"
@@ -55,6 +82,55 @@ queued:
     title: "Selected poems"
     author: "Alfred, Lord Tennyson"
     notes: "Multiple Gutenberg sources available"
+
+  - id: "browning_bells"
+    title: "Bells and Pomegranates (Dramatic Lyrics & Dramatic Romances)"
+    author: "Robert Browning"
+    notes: >
+      Contains Porphyria's Lover, My Last Duchess, Soliloquy of the Spanish
+      Cloister, The Pied Piper, etc. Gutenberg #16376 or similar.
+
+  - id: "browning_dramatis"
+    title: "Dramatis Personae"
+    author: "Robert Browning"
+    notes: "Caliban upon Setebos, Rabbi Ben Ezra, Abt Vogler, etc. Gutenberg #993."
+
+  - id: "browning_men_women"
+    title: "Men and Women"
+    author: "Robert Browning"
+    notes: "Fra Lippo Lippi, Andrea del Sarto, etc. Already on wish list, promoting."
+
+  - id: "hardy_poems"
+    title: "Wessex Poems + Poems of the Past and the Present + Time's Laughingstocks"
+    author: "Thomas Hardy"
+    notes: "Multiple Gutenberg sources. Promote from wish list — essential for late Victorian coverage."
+
+  - id: "kipling_poems"
+    title: "Selected poems (Barrack-Room Ballads, Departmental Ditties, The Years Between, etc.)"
+    author: "Rudyard Kipling"
+    notes: "Gutenberg has multiple collections. Died 1936, out of copyright."
+
+  - id: "clare_poems"
+    title: "Selected poems"
+    author: "John Clare"
+    notes: >
+      Finding clean texts is the challenge. Gutenberg #22063 (Poems) exists but quality
+      unknown. May need Standard Ebooks or manual sourcing. Worth the effort — no one
+      else in the corpus does what Clare does with landscape and perception.
+
+  - id: "smart_jubilate"
+    title: "Jubilate Agno (esp. 'My Cat Jeoffry')"
+    author: "Christopher Smart"
+    notes: >
+      The Jeoffry section is essential. Full Jubilate Agno on Gutenberg #35996.
+      May already have fragments via ECPA or OBEV — check before duplicating.
+
+  - id: "yeats_poems"
+    title: "Collected poems (pre-1926 publications)"
+    author: "W. B. Yeats"
+    notes: >
+      Died 1939, out of copyright in Ireland/EU (life+70 expired 2009). Gutenberg
+      has early collections. The canon arguably ends here. Essential addition.
 
 wish_list:
   - author: "John Suckling"
@@ -67,12 +143,8 @@ wish_list:
     title: "Public domain selections"
   - author: "Gerard Manley Hopkins"
     title: "Poems (1918 Bridges edition)"
-  - author: "Thomas Hardy"
-    title: "Wessex Poems"
   - author: "Elizabeth Barrett Browning"
     title: "Sonnets from the Portuguese"
-  - author: "Robert Browning"
-    title: "Men and Women"
 
 sources:
   eebo_tcp:
