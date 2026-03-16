@@ -44,16 +44,18 @@ class Engine:
         self._last_post_time: float = 0
 
     def _build_reflection_context(self, passages: list[dict] | None) -> dict | None:
-        """Assemble reflection context for composition: latest reflection, passage notes, poet warnings."""
+        """Assemble reflection context for composition: latest reflection, self_notes, passage notes, poet warnings."""
         if not passages:
             return None
 
         context = {}
 
-        # Latest daily reflection summary
+        # Latest daily reflection summary + self_notes from Opus
         latest = self.store.get_latest_reflection(period="daily")
         if latest:
             context["latest_reflection"] = latest.get("summary")
+            if latest.get("self_notes"):
+                context["self_notes"] = latest["self_notes"]
 
         # Passage notes for retrieved chunks
         chunk_ids = [p["chunk_id"] for p in passages if "chunk_id" in p]
@@ -283,32 +285,41 @@ class Engine:
 
         return result
 
-    def run_daily_reflection(self) -> dict | None:
-        """Run the daily digest reflection. Call once per day (or manually via CLI).
+    def run_daily_reflection(self, date: str | None = None) -> dict | None:
+        """Run the Opus daily review: select best entries + write reflection.
 
-        Returns the reflection dict, or None if no readings today.
+        Call once per day (or manually via CLI). Marks selected entries as published.
+        Returns the review dict, or None if no posts today.
         """
-        readings = self.store.get_readings_since(hours=24)
-        if not readings:
-            log.info("No readings in last 24h — skipping daily reflection.")
+        interactions = self.store.get_todays_posted_interactions(date=date)
+        if not interactions:
+            log.info("No posted interactions today — skipping daily review.")
             return None
 
         poet_usage = self.store.get_poet_usage(hours=168)  # 7 days
         theme_usage = self.store.get_theme_usage(hours=168)
 
-        last_weekly = self.store.get_latest_reflection(period="weekly")
-        last_weekly_summary = last_weekly["summary"] if last_weekly else None
+        recent_reflections = self.store.get_recent_reflections(period="daily", limit=3)
 
-        result = brain.daily_reflect(
+        result = brain.daily_review(
             self.client,
-            readings=readings,
+            interactions=interactions,
             poet_usage=poet_usage,
             theme_usage=theme_usage,
-            last_weekly=last_weekly_summary,
+            recent_reflections=recent_reflections,
         )
 
         usage = result.pop("_usage", {})
 
+        # Mark selected entries as published
+        selected = result.get("selected_ids", [])
+        valid_ids = {ix["id"] for ix in interactions}
+        publish_ids = [s["id"] for s in selected if s.get("id") in valid_ids]
+        if publish_ids:
+            self.store.mark_published(publish_ids)
+            log.info("Marked %d entries as published: %s", len(publish_ids), publish_ids)
+
+        # Store reflection
         self.store.log_reflection(
             period="daily",
             summary=result.get("summary", ""),
@@ -316,7 +327,11 @@ class Engine:
             themes_used=theme_usage,
             preoccupations=result.get("preoccupations"),
             recommendations=result.get("recommendations"),
+            self_notes=result.get("self_notes"),
         )
 
-        log.info("Daily reflection stored. Preoccupations: %s", result.get("preoccupations"))
+        log.info(
+            "Daily Opus review stored. Selected %d/%d entries. Preoccupations: %s",
+            len(publish_ids), len(interactions), result.get("preoccupations"),
+        )
         return result

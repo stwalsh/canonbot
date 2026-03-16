@@ -162,6 +162,11 @@ def compose(
                 )
             context_parts.append("PASSAGE HISTORY:\n" + "\n".join(history_lines))
 
+        if reflection_context.get("self_notes"):
+            context_parts.append(
+                f"NOTES FROM YOUR REVIEWER:\n{reflection_context['self_notes']}"
+            )
+
         for w in (reflection_context.get("poet_warnings") or []):
             context_parts.append(w)
 
@@ -294,19 +299,31 @@ def reflect(
     return {"collision_note": "", "themes": [], "updated_note": existing_note or "", "_usage": usage}
 
 
-DAILY_REFLECT_MODEL = COMPOSITION_MODEL  # Sonnet — synthesis needs the better model
+DAILY_REVIEW_MODEL = "claude-opus-4-6"
 
 
-# Tool schema for structured daily reflection output
-_DAILY_REFLECT_TOOL = {
-    "name": "daily_reflection",
-    "description": "Record your daily reflection on patterns, preoccupations, and adjustments.",
+# Tool schema for Opus daily review — selection + reflection
+_DAILY_REVIEW_TOOL = {
+    "name": "daily_review",
+    "description": "Select the day's best entries for publication and write a critical reflection.",
     "input_schema": {
         "type": "object",
         "properties": {
+            "selected_ids": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer", "description": "Interaction ID to publish."},
+                        "reason": {"type": "string", "description": "Brief reason for selecting this entry (1 sentence)."},
+                    },
+                    "required": ["id", "reason"],
+                },
+                "description": "3-7 interaction IDs to publish, with reasoning.",
+            },
             "summary": {
                 "type": "string",
-                "description": "2-3 paragraph reflection on the day's patterns.",
+                "description": "2-3 paragraph critical reflection on the day's work.",
             },
             "preoccupations": {
                 "type": "array",
@@ -318,55 +335,105 @@ _DAILY_REFLECT_TOOL = {
                 "items": {"type": "string"},
                 "description": "Up to 3 concrete adjustments for tomorrow.",
             },
+            "self_notes": {
+                "type": "string",
+                "description": (
+                    "Free-form notes to your future self (the composition model). "
+                    "Tonal corrections, poets to seek out, patterns to break, "
+                    "things you noticed about your own writing today."
+                ),
+            },
         },
-        "required": ["summary", "preoccupations", "recommendations"],
+        "required": ["selected_ids", "summary", "preoccupations", "recommendations", "self_notes"],
     },
 }
 
 
-def daily_reflect(
+def daily_review(
     client: anthropic.Anthropic,
     *,
-    readings: list[dict],
+    interactions: list[dict],
     poet_usage: dict[str, int],
     theme_usage: dict[str, int],
-    last_weekly: str | None = None,
+    recent_reflections: list[dict] | None = None,
 ) -> dict:
-    """Daily digest reflection. Uses Sonnet. Returns summary, preoccupations, recommendations."""
+    """Daily Opus review: select best entries + write reflection.
+
+    Returns selected_ids, summary, preoccupations, recommendations, self_notes.
+    """
     prompt_template = _load_prompt("daily_reflect.md")
 
-    # Format readings block
-    readings_lines = []
-    for r in readings:
-        stimulus_snippet = (r.get("stimulus_text") or r.get("i_stimulus") or "")[:100]
-        readings_lines.append(
-            f"- Stimulus: \"{stimulus_snippet}...\"\n"
-            f"  Passage: {r.get('poet', '?')} — \"{r.get('poem_title', '?')}\"\n"
-            f"  Note: {r.get('collision_note', '(none)')}\n"
-            f"  Themes: {r.get('themes', [])}"
+    # Format full interaction data
+    interaction_blocks = []
+    for ix in interactions:
+        posts = ix.get("posts") or []
+        post_text = " | ".join(posts) if isinstance(posts, list) else str(posts)
+
+        passage = ix.get("passage_used") or {}
+        if isinstance(passage, dict):
+            passage_info = (
+                f"  Passage: {passage.get('poet', '?')} — \"{passage.get('poem_title', '?')}\"\n"
+                f"  Verse: {(passage.get('text') or '(no text)')[:300]}"
+            )
+        else:
+            passage_info = f"  Passage: {passage}"
+
+        block = (
+            f"[ID {ix['id']}]\n"
+            f"  Stimulus: \"{(ix.get('stimulus_text') or '')[:200]}\"\n"
+            f"  Triage reason: {ix.get('triage_reason', '?')}\n"
+            f"  The problem: {ix.get('the_problem', '?')}\n"
+            f"{passage_info}\n"
+            f"  Bot post: {post_text}\n"
+            f"  Mode: {ix.get('composition_mode', '?')}"
         )
-    readings_block = "\n".join(readings_lines) if readings_lines else "(No readings today.)"
+        interaction_blocks.append(block)
+
+    interactions_block = "\n\n".join(interaction_blocks) if interaction_blocks else "(No posts today.)"
 
     poet_dist = ", ".join(f"{p}: {n}" for p, n in poet_usage.items()) or "(none)"
     theme_dist = ", ".join(f"{t}: {n}" for t, n in theme_usage.items()) or "(none)"
 
+    # Format reflection history (up to 3, newest first)
+    reflections = recent_reflections or []
+    if reflections:
+        history_parts = []
+        for i, ref in enumerate(reflections):
+            date = ref.get("timestamp", "")[:10]
+            label = "Yesterday" if i == 0 else f"{date}"
+            summary = ref.get("summary", "(none)")
+            self_notes = ref.get("self_notes") or "(none)"
+            preoccs = ref.get("preoccupations") or []
+            recs = ref.get("recommendations") or []
+            part = (
+                f"--- {label} ({date}) ---\n"
+                f"Reflection: {summary}\n"
+                f"Self-notes: {self_notes}\n"
+                f"Preoccupations: {', '.join(preoccs) if preoccs else '(none)'}\n"
+                f"Recommendations: {', '.join(recs) if recs else '(none)'}"
+            )
+            history_parts.append(part)
+        reflection_history = "\n\n".join(history_parts)
+    else:
+        reflection_history = "None yet."
+
     user_msg = prompt_template.format(
-        n_posts=len(readings),
-        readings_block=readings_block,
+        n_posts=len(interactions),
+        interactions_block=interactions_block,
         poet_distribution=poet_dist,
         theme_distribution=theme_dist,
-        last_weekly=last_weekly or "None yet.",
+        reflection_history=reflection_history,
     )
 
     soul = _load_prompt("soul.md")
 
     response = client.messages.create(
-        model=DAILY_REFLECT_MODEL,
-        max_tokens=1024,
+        model=DAILY_REVIEW_MODEL,
+        max_tokens=2048,
         system=soul,
         messages=[{"role": "user", "content": user_msg}],
-        tools=[_DAILY_REFLECT_TOOL],
-        tool_choice={"type": "tool", "name": "daily_reflection"},
+        tools=[_DAILY_REVIEW_TOOL],
+        tool_choice={"type": "tool", "name": "daily_review"},
     )
 
     usage = {
@@ -380,7 +447,10 @@ def daily_reflect(
             result["_usage"] = usage
             return result
 
-    return {"summary": "", "preoccupations": [], "recommendations": [], "_usage": usage}
+    return {
+        "selected_ids": [], "summary": "", "preoccupations": [],
+        "recommendations": [], "self_notes": "", "_usage": usage,
+    }
 
 
 def run(

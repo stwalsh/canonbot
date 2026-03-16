@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS interactions (
     skip_reason TEXT,
     tokens_in INTEGER DEFAULT 0,
     tokens_out INTEGER DEFAULT 0,
-    dry_run INTEGER DEFAULT 0
+    dry_run INTEGER DEFAULT 0,
+    published INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS daily_stats (
@@ -59,7 +60,8 @@ CREATE TABLE IF NOT EXISTS reflections (
     poets_used TEXT,
     themes_used TEXT,
     preoccupations TEXT,
-    recommendations TEXT
+    recommendations TEXT,
+    self_notes TEXT
 );
 
 CREATE TABLE IF NOT EXISTS passage_notes (
@@ -81,9 +83,35 @@ class Store:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
+        self._migrate()
+
+    def _migrate(self):
+        """Add columns that may be missing from older databases."""
+        cursor = self._conn.execute("PRAGMA table_info(interactions)")
+        ix_cols = {row[1] for row in cursor.fetchall()}
+        if "published" not in ix_cols:
+            self._conn.execute("ALTER TABLE interactions ADD COLUMN published INTEGER DEFAULT 0")
+            self._conn.commit()
+
+        cursor = self._conn.execute("PRAGMA table_info(reflections)")
+        ref_cols = {row[1] for row in cursor.fetchall()}
+        if "self_notes" not in ref_cols:
+            self._conn.execute("ALTER TABLE reflections ADD COLUMN self_notes TEXT")
+            self._conn.commit()
 
     def close(self):
         self._conn.close()
+
+    def mark_published(self, interaction_ids: list[int]):
+        """Set published=1 for the given interaction IDs."""
+        if not interaction_ids:
+            return
+        placeholders = ",".join("?" * len(interaction_ids))
+        self._conn.execute(
+            f"UPDATE interactions SET published = 1 WHERE id IN ({placeholders})",
+            interaction_ids,
+        )
+        self._conn.commit()
 
     def log_interaction(
         self,
@@ -354,21 +382,42 @@ class Store:
         themes_used: dict | None = None,
         preoccupations: list[str] | None = None,
         recommendations: list[str] | None = None,
+        self_notes: str | None = None,
     ) -> int:
         """Log a reflection (daily, weekly, monthly)."""
         now = datetime.now(timezone.utc).isoformat()
         cur = self._conn.execute(
             """INSERT INTO reflections (timestamp, period, summary,
-               poets_used, themes_used, preoccupations, recommendations)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               poets_used, themes_used, preoccupations, recommendations, self_notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (now, period, summary,
              json.dumps(poets_used) if poets_used else None,
              json.dumps(themes_used) if themes_used else None,
              json.dumps(preoccupations) if preoccupations else None,
-             json.dumps(recommendations) if recommendations else None),
+             json.dumps(recommendations) if recommendations else None,
+             self_notes),
         )
         self._conn.commit()
         return cur.lastrowid
+
+    def get_recent_reflections(self, period: str = "daily", limit: int = 3) -> list[dict]:
+        """Get the N most recent reflections of the given period, newest first."""
+        rows = self._conn.execute(
+            """SELECT * FROM reflections WHERE period = ?
+               ORDER BY id DESC LIMIT ?""",
+            (period, limit),
+        ).fetchall()
+        results = []
+        for row in rows:
+            d = dict(row)
+            for field in ("poets_used", "themes_used", "preoccupations", "recommendations"):
+                if d.get(field):
+                    try:
+                        d[field] = json.loads(d[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            results.append(d)
+        return results
 
     def get_latest_reflection(self, period: str = "daily") -> dict | None:
         """Get the most recent reflection of the given period."""
@@ -385,6 +434,7 @@ class Store:
                         d[field] = json.loads(d[field])
                     except (json.JSONDecodeError, TypeError):
                         pass
+            # self_notes is plain text, no JSON parsing needed
             return d
         return None
 
@@ -442,6 +492,34 @@ class Store:
                 WHERE {where}
                 ORDER BY timestamp ASC""",
             params,
+        ).fetchall()
+
+        results = []
+        for row in rows:
+            d = dict(row)
+            for field in ("triage_queries", "passages_retrieved", "passage_used",
+                          "posts", "response_uris"):
+                if d.get(field):
+                    try:
+                        d[field] = json.loads(d[field])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            results.append(d)
+        return results
+
+    def get_todays_posted_interactions(self, date: str | None = None) -> list[dict]:
+        """Get posted interactions for a specific date (default: today UTC).
+
+        Returns full interaction dicts with JSON fields parsed.
+        Used by the Opus daily review.
+        """
+        date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        rows = self._conn.execute(
+            """SELECT * FROM interactions
+               WHERE timestamp LIKE ? AND composition_decision = 'post'
+                 AND source != 'test'
+               ORDER BY timestamp ASC""",
+            (f"{date}%",),
         ).fetchall()
 
         results = []

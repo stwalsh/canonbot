@@ -60,6 +60,18 @@ def _get_passage_text(interaction: dict, store: Store) -> dict | None:
     return result
 
 
+def _first_review_date(store: Store) -> str | None:
+    """Find the date of the first daily reflection with self_notes (i.e. first Opus review)."""
+    row = store._conn.execute(
+        """SELECT timestamp FROM reflections
+           WHERE period = 'daily' AND self_notes IS NOT NULL
+           ORDER BY id ASC LIMIT 1"""
+    ).fetchone()
+    if row:
+        return row[0][:10]
+    return None
+
+
 def build(store: Store) -> Path:
     """Render the site into BUILD_DIR. Returns the build path."""
     env = Environment(
@@ -68,10 +80,21 @@ def build(store: Store) -> Path:
     )
 
     # Fetch data (exclude manual test runs)
-    interactions = [
+    all_interactions = [
         ix for ix in store.get_posted_interactions(include_dry_run=True)
         if ix.get("source") != "test"
     ]
+
+    # Publication filter: show published=1, OR entries from before the first Opus review
+    first_review = _first_review_date(store)
+    if first_review:
+        interactions = [
+            ix for ix in all_interactions
+            if ix.get("published") or (ix.get("timestamp", "")[:10] < first_review)
+        ]
+    else:
+        # No Opus review has ever run — show everything (pre-review era)
+        interactions = all_interactions
     reflections = store.get_all_reflections()
 
     # Prepare entries
