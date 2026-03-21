@@ -24,7 +24,7 @@ from src.store import Store
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates" / "site"
 BUILD_DIR = Path(__file__).resolve().parent.parent / "data" / "site_build"
-REPO_URL = "https://github.com/stwalsh/lucubrator.git"
+REPO_URL = "git@github.com:stwalsh/lucubrator.git"
 
 
 def _make_slug(interaction: dict) -> str:
@@ -123,12 +123,13 @@ def build(store: Store) -> Path:
         entries_by_date_dict[e["date"]].append(e)
     entries_by_date = sorted(entries_by_date_dict.items(), reverse=True)
 
-    # Group reflections by date
+    # Group reflections by date (newest first)
     reflections_by_date = {}
     for r in reflections:
         date = r["timestamp"][:10] if r.get("timestamp") else ""
         if date:
             reflections_by_date[date] = r
+    all_reflections = sorted(reflections_by_date.items(), reverse=True)
 
     # Clean + create build dir
     if BUILD_DIR.exists():
@@ -146,7 +147,7 @@ def build(store: Store) -> Path:
         index_tpl.render(
             root="",
             entries_by_date=entries_by_date,
-            reflections_by_date=reflections_by_date,
+            all_reflections=all_reflections,
         ),
         encoding="utf-8",
     )

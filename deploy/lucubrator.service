@@ -1,0 +1,24 @@
+[Unit]
+Description=Lucubrator — Bluesky poetry bot (timeline poller)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Change User to match your Pi username
+User=pi
+WorkingDirectory=/home/pi/canonbot
+EnvironmentFile=/home/pi/canonbot/.env
+ExecStart=/home/pi/canonbot/venv/bin/python -m src.bluesky.runner --timeline
+Restart=on-failure
+RestartSec=30
+# Ensure clean shutdown
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Logging goes to journal: journalctl -u lucubrator -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
