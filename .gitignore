@@ -20,6 +20,7 @@ corpus/blake_erdman/
 
 # Secrets
 .env
+config/interlocutors/
 
 # Claude Code
 .claude/

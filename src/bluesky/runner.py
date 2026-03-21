@@ -117,6 +117,25 @@ def _print_result(post: dict, result: dict, dry_run: bool):
     print(f"  [{tag}] interaction_id={result.get('interaction_id')}")
 
 
+def _print_self_result(result: dict):
+    """Pretty-print a self-generated result to stdout."""
+    comp = result.get("composition") or {}
+    if comp.get("decision") != "post":
+        print(f"\n  SELF [{result.get('mode', '?')}]: skipped — {comp.get('skip_reason', '?')}")
+        return
+
+    mode = result.get("mode", "?")
+    print(f"\n{'='*60}")
+    print(f"  SELF [{mode.upper()}]: {result.get('search_reason', '')[:120]}")
+    print(f"  COMPOSITION: {comp.get('decision')} ({comp.get('mode', '?')})")
+    for i, text in enumerate(comp.get("posts", []), 1):
+        print(f"  POST {i}: {text}")
+    pu = comp.get("passage_used")
+    if pu:
+        print(f"  PASSAGE: {pu.get('poet')} — \"{pu.get('poem_title')}\" [{pu.get('chunk_id', '')}]")
+    print(f"  [DRY RUN] interaction_id={result.get('interaction_id')}")
+
+
 async def run(live: bool = False, timeline: bool = False):
     load_dotenv()
 
@@ -158,15 +177,65 @@ async def run(live: bool = False, timeline: bool = False):
         print("  Starting firehose consumer...")
         consumer = firehose_consume()
 
+    # Self-generation state
+    import random
+    _polls_without_composition = 0
+    _self_gen_modes = ["contemplate", "contemplate", "compare"]  # 2:1 ratio
+    _SELF_GEN_INTERVAL = 3  # trigger after N polls with no compositions
+
+    _composed_this_cycle = False
+
     async for post in consumer:
+        # End-of-cycle sentinel from timeline consumer
+        if post.get("_end_of_cycle"):
+            if timeline and not _composed_this_cycle:
+                _polls_without_composition += 1
+                if _polls_without_composition >= _SELF_GEN_INTERVAL:
+                    _polls_without_composition = 0
+                    mode = random.choice(_self_gen_modes)
+                    print(f"\n  [self] No compositions in {_SELF_GEN_INTERVAL} cycles — generating ({mode})...")
+                    try:
+                        sg_result = await asyncio.wait_for(
+                            asyncio.to_thread(engine.self_generate, mode=mode, dry_run=dry_run),
+                            timeout=180,
+                        )
+                        _print_self_result(sg_result)
+                        sg_comp = sg_result.get("composition") or {}
+                        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                        tag = "DRY" if dry_run else "LIVE"
+                        logger.info(
+                            f"\n--- [{now}] [{tag}] [SELF {mode.upper()}] ---\n"
+                            f"Reason: {sg_result.get('search_reason', '')}\n"
+                            f"Decision: {sg_comp.get('decision', 'skip')}\n"
+                            + (("\n".join(f"Post: {p}" for p in sg_comp.get("posts", []))) if sg_comp.get("posts") else "")
+                        )
+                        if sg_comp.get("decision") == "post":
+                            await asyncio.sleep(65)
+                    except asyncio.TimeoutError:
+                        print("  [self] TIMEOUT on self-generation")
+                    except Exception as e:
+                        print(f"  [self] ERROR: {e}")
+            else:
+                _polls_without_composition = 0
+            _composed_this_cycle = False
+            continue
+
         try:
-            result = engine.process(
-                stimulus=post["text"],
-                source=source,
-                stimulus_uri=post["post_uri"],
-                stimulus_author=post.get("author_handle") or post["author_did"],
-                dry_run=dry_run,
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    engine.process,
+                    stimulus=post["text"],
+                    source=source,
+                    stimulus_uri=post["post_uri"],
+                    stimulus_author=post.get("author_handle") or post["author_did"],
+                    dry_run=dry_run,
+                ),
+                timeout=120,
             )
+        except asyncio.TimeoutError:
+            print(f"\n  TIMEOUT processing post: {post['text'][:80]}")
+            logger.info(f"\n--- TIMEOUT ---\nStimulus: {post['text'][:200]}")
+            continue
         except Exception as e:
             print(f"\n  ERROR processing post: {e}")
             logger.info(f"\n--- ERROR ---\nStimulus: {post['text'][:200]}\nError: {e}")
@@ -174,6 +243,12 @@ async def run(live: bool = False, timeline: bool = False):
 
         _print_result(post, result, dry_run)
         _log_interaction(logger, post, result, dry_run)
+
+        # Track if we composed anything this cycle
+        if not result.get("rate_limited"):
+            comp = result.get("composition") or {}
+            if comp.get("decision") == "post":
+                _composed_this_cycle = True
 
         # In timeline mode, respect cooldown between posts
         if timeline and not result.get("rate_limited"):

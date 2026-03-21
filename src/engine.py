@@ -14,8 +14,8 @@ from src.store import Store
 log = logging.getLogger(__name__)
 
 _DEFAULT_CONFIG = {
-    "max_responses_per_hour": 5,
-    "max_responses_per_day": 20,
+    "max_responses_per_hour": 10,
+    "max_responses_per_day": 30,
     "anti_repetition_hours": 48,
     "cooldown_after_post_seconds": 60,
     "poet_warning_threshold": 3,  # warn if poet used >N times in 48h
@@ -282,6 +282,139 @@ class Engine:
         # Post-composition reflection (only on successful posts)
         if comp.get("decision") == "post":
             self._run_post_reflection(result, interaction_id, stimulus, dry_run)
+
+        return result
+
+    def self_generate(self, mode: str = "contemplate", dry_run: bool = False) -> dict:
+        """Run a self-generated meditation or comparison.
+
+        mode: "contemplate" (single passage) or "compare" (two passages).
+        Returns the result dict with interaction_id.
+        """
+        import random
+
+        result = {"tokens_in": 0, "tokens_out": 0}
+
+        # Gather context for search direction
+        latest = self.store.get_latest_reflection(period="daily")
+        self_notes = latest.get("self_notes") if latest else None
+        theme_usage = self.store.get_theme_usage(hours=168)
+        poet_usage = self.store.get_poet_usage(hours=48)
+        recent_themes = sorted(theme_usage, key=theme_usage.get, reverse=True)[:5]
+        recent_poets = sorted(poet_usage, key=poet_usage.get, reverse=True)[:5]
+
+        # Get recently used chunk_ids for anti-repetition
+        exclude_ids = self.store.get_used_chunk_ids(hours=self.config["anti_repetition_hours"])
+
+        # Generate search direction
+        direction = brain._generate_search_direction(
+            self.client, self_notes, recent_themes, recent_poets,
+        )
+        dir_usage = direction.pop("_usage", {})
+        result["tokens_in"] += dir_usage.get("input_tokens", 0)
+        result["tokens_out"] += dir_usage.get("output_tokens", 0)
+
+        query = direction.get("query", "")
+        search_reason = direction.get("reason", "")
+
+        # If no query generated, pick a random passage
+        if not query:
+            raw_passages = brain.retrieve(
+                ["mortality", "desire", "power", "devotion", "loss"][random.randrange(5)],
+                n_results=10, exclude_ids=exclude_ids,
+            )
+        else:
+            raw_passages = brain.retrieve([query], n_results=10, exclude_ids=exclude_ids)
+
+        passages = safety.filter_passages(raw_passages)
+        if not passages:
+            return {"decision": "skip", "skip_reason": "No passages found.", **result}
+
+        if mode == "compare":
+            # Pick passage 1, then find a contrasting passage 2
+            passage_1 = passages[0]
+            # Use passage 1's text as query but exclude same poet
+            second_query = passage_1["text"][:200]
+            raw_second = brain.retrieve(
+                [second_query], n_results=10, exclude_ids=exclude_ids | {passage_1["chunk_id"]},
+            )
+            second_passages = [
+                p for p in safety.filter_passages(raw_second)
+                if p["poet"] != passage_1["poet"]
+            ]
+            if not second_passages:
+                # Fall back to contemplate
+                mode = "contemplate"
+            else:
+                passage_2 = second_passages[0]
+                comp = brain.compare(self.client, passage_1, passage_2, search_reason)
+                comp_usage = comp.pop("_usage", {})
+                result["tokens_in"] += comp_usage.get("input_tokens", 0)
+                result["tokens_out"] += comp_usage.get("output_tokens", 0)
+                result["composition"] = comp
+                result["passages"] = [passage_1, passage_2]
+
+                # Enrich passage_used
+                pu = comp.get("passage_used")
+                if pu and pu.get("chunk_id"):
+                    for p in [passage_1, passage_2]:
+                        if p["chunk_id"] == pu["chunk_id"]:
+                            pu["text"] = p.get("text", "")
+                            break
+
+        if mode == "contemplate":
+            passage = passages[0]
+            comp = brain.contemplate(self.client, passage, search_reason)
+            comp_usage = comp.pop("_usage", {})
+            result["tokens_in"] += comp_usage.get("input_tokens", 0)
+            result["tokens_out"] += comp_usage.get("output_tokens", 0)
+            result["composition"] = comp
+            result["passages"] = [passage]
+
+            # Enrich passage_used
+            pu = comp.get("passage_used")
+            if pu and not pu.get("text"):
+                pu["text"] = passage.get("text", "")
+                if not pu.get("chunk_id"):
+                    pu["chunk_id"] = passage["chunk_id"]
+
+        comp = result.get("composition", {})
+        source = f"self_{mode}"
+
+        # Track post time
+        if comp.get("decision") == "post":
+            self._last_post_time = time.time()
+
+        # Build a triage-like dict for logging
+        triage_data = {
+            "engage": comp.get("decision") == "post",
+            "reason": search_reason,
+            "search_queries": [query] if query else [],
+            "the_problem": search_reason,
+        }
+
+        interaction_id = self.store.log_interaction(
+            source=source,
+            stimulus_text=f"[{mode}] {search_reason}",
+            stimulus_uri=None,
+            stimulus_author="self",
+            triage=triage_data,
+            passages=result.get("passages"),
+            composition=comp,
+            tokens_in=result.get("tokens_in", 0),
+            tokens_out=result.get("tokens_out", 0),
+            dry_run=dry_run,
+        )
+        result["interaction_id"] = interaction_id
+        result["mode"] = mode
+        result["search_reason"] = search_reason
+        result["rate_limited"] = False
+
+        # Post-composition reflection
+        if comp.get("decision") == "post":
+            self._run_post_reflection(
+                result, interaction_id, f"[{mode}] {search_reason}", dry_run,
+            )
 
         return result
 

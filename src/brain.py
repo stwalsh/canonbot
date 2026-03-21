@@ -11,7 +11,7 @@ from src import safety
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "config" / "prompts"
 
 TRIAGE_MODEL = "claude-haiku-4-5-20251001"
-COMPOSITION_MODEL = "claude-sonnet-4-5-20250929"
+COMPOSITION_MODEL = "claude-opus-4-6"
 
 
 def _load_prompt(name: str) -> str:
@@ -451,6 +451,176 @@ def daily_review(
         "selected_ids": [], "summary": "", "preoccupations": [],
         "recommendations": [], "self_notes": "", "_usage": usage,
     }
+
+
+def _generate_search_direction(
+    client: anthropic.Anthropic,
+    self_notes: str | None,
+    recent_themes: list[str] | None,
+    recent_poets: list[str] | None,
+) -> dict:
+    """Ask Haiku to generate a search query based on self-notes and recent patterns.
+
+    Returns {"query": str, "reason": str} — the query for ChromaDB and why.
+    """
+    parts = []
+    if self_notes:
+        parts.append(f"Your recent self-notes:\n{self_notes}")
+    if recent_themes:
+        parts.append(f"Themes you've been working with: {', '.join(recent_themes)}")
+    if recent_poets:
+        parts.append(f"Poets you've used recently: {', '.join(recent_poets)}")
+
+    if not parts:
+        # No context — go random
+        return {"query": "", "reason": "No self-notes or recent context; exploring freely."}
+
+    user_msg = (
+        "You are deciding what to read next from your poetry corpus. "
+        "Based on the context below, generate a short search query (a phrase or sentence) "
+        "that would find an interesting passage — something you haven't explored enough, "
+        "or a direction your self-notes suggest. Drift slightly from your recent themes; "
+        "don't just repeat them.\n\n"
+        + "\n\n".join(parts)
+        + "\n\nRespond with JSON: {\"query\": \"...\", \"reason\": \"...\"}"
+    )
+
+    response = client.messages.create(
+        model=TRIAGE_MODEL,
+        max_tokens=256,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    try:
+        result = json.loads(text)
+    except json.JSONDecodeError:
+        result = {"query": text[:200], "reason": "Unparseable response, using as raw query."}
+    result["_usage"] = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+    return result
+
+
+def contemplate(
+    client: anthropic.Anthropic,
+    passage: dict,
+    search_reason: str,
+) -> dict:
+    """Self-generated meditation on a single passage.
+
+    Returns structured dict with decision, mode, posts, passage_used, skip_reason.
+    """
+    soul = _load_prompt("soul.md")
+    prompt_template = _load_prompt("contemplate.md")
+
+    user_msg = prompt_template.format(
+        search_reason=search_reason,
+        chunk_id=passage["chunk_id"],
+        poet=passage["poet"],
+        poem_title=passage.get("poem_title", ""),
+        date=passage.get("date", ""),
+        work=passage.get("work", ""),
+        text=passage["text"],
+    )
+
+    response = client.messages.create(
+        model=COMPOSITION_MODEL,
+        max_tokens=1024,
+        system=soul,
+        messages=[{"role": "user", "content": user_msg}],
+        tools=[_COMPOSE_TOOL],
+        tool_choice={"type": "tool", "name": "compose_response"},
+    )
+
+    usage = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+
+    for block in response.content:
+        if block.type == "tool_use":
+            result = block.input
+            posts = result.get("posts", [])
+            if isinstance(posts, str):
+                try:
+                    parsed = json.loads(posts)
+                    posts = parsed if isinstance(parsed, list) else [posts]
+                except (json.JSONDecodeError, TypeError):
+                    posts = [posts]
+            result["posts"] = [p.replace("\n", " ").strip() for p in posts if isinstance(p, str)]
+            pu = result.get("passage_used")
+            if isinstance(pu, str):
+                result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            result["_usage"] = usage
+            return result
+
+    return {"decision": "skip", "mode": "thought_only", "posts": [], "skip_reason": "No tool call.", "_usage": usage}
+
+
+def compare(
+    client: anthropic.Anthropic,
+    passage_1: dict,
+    passage_2: dict,
+    search_reason: str,
+) -> dict:
+    """Self-generated comparison of two passages.
+
+    Returns structured dict with decision, mode, posts, passage_used, skip_reason.
+    """
+    soul = _load_prompt("soul.md")
+    prompt_template = _load_prompt("compare.md")
+
+    user_msg = prompt_template.format(
+        search_reason=search_reason,
+        chunk_id_1=passage_1["chunk_id"],
+        poet_1=passage_1["poet"],
+        poem_title_1=passage_1.get("poem_title", ""),
+        date_1=passage_1.get("date", ""),
+        work_1=passage_1.get("work", ""),
+        text_1=passage_1["text"],
+        chunk_id_2=passage_2["chunk_id"],
+        poet_2=passage_2["poet"],
+        poem_title_2=passage_2.get("poem_title", ""),
+        date_2=passage_2.get("date", ""),
+        work_2=passage_2.get("work", ""),
+        text_2=passage_2["text"],
+    )
+
+    response = client.messages.create(
+        model=COMPOSITION_MODEL,
+        max_tokens=1024,
+        system=soul,
+        messages=[{"role": "user", "content": user_msg}],
+        tools=[_COMPOSE_TOOL],
+        tool_choice={"type": "tool", "name": "compose_response"},
+    )
+
+    usage = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+
+    for block in response.content:
+        if block.type == "tool_use":
+            result = block.input
+            posts = result.get("posts", [])
+            if isinstance(posts, str):
+                try:
+                    parsed = json.loads(posts)
+                    posts = parsed if isinstance(parsed, list) else [posts]
+                except (json.JSONDecodeError, TypeError):
+                    posts = [posts]
+            result["posts"] = [p.replace("\n", " ").strip() for p in posts if isinstance(p, str)]
+            pu = result.get("passage_used")
+            if isinstance(pu, str):
+                result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            result["_usage"] = usage
+            return result
+
+    return {"decision": "skip", "mode": "thought_only", "posts": [], "skip_reason": "No tool call.", "_usage": usage}
 
 
 def run(

@@ -129,7 +129,6 @@ def build(store: Store) -> Path:
         date = r["timestamp"][:10] if r.get("timestamp") else ""
         if date:
             reflections_by_date[date] = r
-    all_reflections = sorted(reflections_by_date.items(), reverse=True)
 
     # Clean + create build dir
     if BUILD_DIR.exists():
@@ -147,7 +146,7 @@ def build(store: Store) -> Path:
         index_tpl.render(
             root="",
             entries_by_date=entries_by_date,
-            all_reflections=all_reflections,
+            reflections_by_date=reflections_by_date,
         ),
         encoding="utf-8",
     )

@@ -68,7 +68,14 @@ async def consume(config: dict | None = None):
 
     while True:
         try:
-            result = client.get_timeline(cursor=cursor, limit=50)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(client.get_timeline, cursor=cursor, limit=50),
+                timeout=60,
+            )
+        except asyncio.TimeoutError:
+            print("  [timeline] Timeout fetching timeline, will retry next cycle")
+            await asyncio.sleep(poll_interval)
+            continue
         except Exception as e:
             print(f"  [timeline] Error fetching timeline: {e}")
             await asyncio.sleep(poll_interval)
@@ -81,6 +88,7 @@ async def consume(config: dict | None = None):
             if new_cursor:
                 cursor = new_cursor
                 _save_cursor(cursor)
+            yield {"_end_of_cycle": True}
             await asyncio.sleep(poll_interval)
             continue
 
@@ -106,5 +114,8 @@ async def consume(config: dict | None = None):
         if new_cursor:
             cursor = new_cursor
             _save_cursor(cursor)
+
+        # Signal end of poll cycle to runner
+        yield {"_end_of_cycle": True}
 
         await asyncio.sleep(poll_interval)

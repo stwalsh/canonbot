@@ -1,29 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Lucubrator — Reading Journal{% endblock %}
 {% block content %}
-{% if all_reflections %}
-<section class="reflections-section">
-    <h2 class="date-header">Reflections</h2>
-    {% for date, refl in all_reflections %}
+{% for date, entries in entries_by_date %}
+<section class="day-group">
+    <h2 class="date-header">{{ date }}</h2>
+
+    {% if reflections_by_date.get(date) %}
     <article class="reflection-card">
-        <h3>{{ date }}</h3>
-        <p>{{ refl.summary[:300] }}{% if refl.summary|length > 300 %}&hellip;{% endif %}</p>
-        {% if refl.preoccupations %}
+        <p>{{ reflections_by_date[date].summary[:300] }}{% if reflections_by_date[date].summary|length > 300 %}&hellip;{% endif %}</p>
+        {% if reflections_by_date[date].preoccupations %}
         <ul class="preoccupations">
-            {% for p in refl.preoccupations %}
+            {% for p in reflections_by_date[date].preoccupations %}
             <li>{{ p }}</li>
             {% endfor %}
         </ul>
         {% endif %}
         <a href="reflections/{{ date }}.html" class="entry-link">full reflection &rarr;</a>
     </article>
-    {% endfor %}
-</section>
-{% endif %}
-
-{% for date, entries in entries_by_date %}
-<section class="day-group">
-    <h2 class="date-header">{{ date }}</h2>
+    {% endif %}
 
     {% for entry in entries %}
     <article class="entry-summary">
