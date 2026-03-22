@@ -20,8 +20,20 @@
         </div>
         {% endif %}
 
-        {% if entry.passage_used %}
-        <div class="attribution">
+        {% if entry.passages_compare %}
+        {% for p in entry.passages_compare %}
+        <div class="passage">
+            {% if p.text %}
+            <blockquote class="verse">{{ p.text }}</blockquote>
+            {% endif %}
+            <cite>{{ p.poet }}{% if p.poem_title %}, &ldquo;{{ p.poem_title }}&rdquo;{% endif %}{% if p.date %} ({{ p.date }}){% endif %}</cite>
+        </div>
+        {% endfor %}
+        {% elif entry.passage_used %}
+        <div class="passage">
+            {% if entry.passage_used.text %}
+            <blockquote class="verse">{{ entry.passage_used.text }}</blockquote>
+            {% endif %}
             <cite>{{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}</cite>
         </div>
         {% endif %}

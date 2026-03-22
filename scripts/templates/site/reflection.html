@@ -5,7 +5,9 @@
     <h2>Daily Reflection &mdash; {{ date }}</h2>
 
     <div class="reflection-summary">
-        {{ reflection.summary }}
+        {% for para in reflection.summary.split('\n\n') %}
+        <p>{{ para }}</p>
+        {% endfor %}
     </div>
 
     {% if reflection.preoccupations %}

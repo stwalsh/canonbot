@@ -138,7 +138,15 @@ class Store:
         posted = 1 if decision == "post" else 0
 
         passage_used = composition.get("passage_used")
-        chunk_ids = [p["chunk_id"] for p in (passages or []) if "chunk_id" in p]
+        # For self-compare, store full passage data so both poems are recoverable
+        if source == "self_compare" and passages:
+            passages_json = json.dumps([
+                {k: v for k, v in p.items() if k in ("chunk_id", "poet", "poem_title", "text", "date", "work")}
+                for p in passages
+            ])
+        else:
+            chunk_ids = [p["chunk_id"] for p in (passages or []) if "chunk_id" in p]
+            passages_json = json.dumps(chunk_ids) if chunk_ids else None
 
         cur = self._conn.execute(
             """INSERT INTO interactions (
@@ -158,7 +166,7 @@ class Store:
                 triage.get("reason"),
                 json.dumps(triage.get("search_queries")) if triage.get("search_queries") else None,
                 triage.get("the_problem"),
-                json.dumps(chunk_ids) if chunk_ids else None,
+                passages_json,
                 json.dumps(passage_used) if passage_used else None,
                 decision,
                 composition.get("mode"),

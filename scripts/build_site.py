@@ -114,7 +114,13 @@ def build(store: Store) -> Path:
             "the_problem": ix.get("the_problem", ""),
             "triage_queries": ix.get("triage_queries") or [],
             "composition_mode": ix.get("composition_mode", ""),
+            "passages_compare": None,
         }
+        # For compare entries, extract both passages if stored as full dicts
+        if ix.get("source") == "self_compare" and ix.get("passages_retrieved"):
+            pr = ix["passages_retrieved"]
+            if isinstance(pr, list) and pr and isinstance(pr[0], dict):
+                entry["passages_compare"] = pr
         entries.append(entry)
 
     # Group by date (reverse chronological for index)
