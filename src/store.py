@@ -233,6 +233,19 @@ class Store:
         ).fetchone()
         return row["total_posted"] if row else 0
 
+    def count_stimulus_responses(self, stimulus_text: str, hours: int = 24) -> int:
+        """Count how many times we've composed a response to this stimulus text recently."""
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        # Match on first 200 chars to catch near-duplicates
+        prefix = stimulus_text[:200]
+        row = self._conn.execute(
+            """SELECT COUNT(*) as n FROM interactions
+               WHERE timestamp > ? AND composition_decision = 'post'
+                 AND substr(stimulus_text, 1, 200) = ?""",
+            (cutoff, prefix),
+        ).fetchone()
+        return row["n"]
+
     def get_stats(self, date: str | None = None) -> dict:
         """Get stats for a given date (default: today UTC)."""
         date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")

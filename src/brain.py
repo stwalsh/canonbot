@@ -46,12 +46,19 @@ def triage(client: anthropic.Anthropic, stimulus: str) -> dict:
     return result
 
 
-def retrieve(queries: list[str], n_results: int = 5, exclude_ids: set[str] | None = None) -> list[dict]:
+def retrieve(
+    queries: list[str],
+    n_results: int = 5,
+    exclude_ids: set[str] | None = None,
+    exclude_poets: set[str] | None = None,
+) -> list[dict]:
     """Stage 2: multi-query semantic search over the corpus.
 
     Returns list of passage dicts.
     """
-    return retriever.search_multi(queries, n_results=n_results, exclude_ids=exclude_ids)
+    return retriever.search_multi(
+        queries, n_results=n_results, exclude_ids=exclude_ids, exclude_poets=exclude_poets,
+    )
 
 
 # Tool schema for structured composition output
@@ -169,6 +176,9 @@ def compose(
 
         for w in (reflection_context.get("poet_warnings") or []):
             context_parts.append(w)
+
+        if reflection_context.get("seeds"):
+            context_parts.append(reflection_context["seeds"])
 
         if context_parts:
             user_msg += "\n\n" + "\n\n".join(context_parts)
@@ -504,10 +514,25 @@ def _generate_search_direction(
     return result
 
 
+def _inject_self_gen_context(user_msg: str, reflection_context: dict | None) -> str:
+    """Append self_notes and seeds to a self-gen prompt if available."""
+    if not reflection_context:
+        return user_msg
+    parts = []
+    if reflection_context.get("self_notes"):
+        parts.append(f"NOTES FROM YOUR REVIEWER:\n{reflection_context['self_notes']}")
+    if reflection_context.get("seeds"):
+        parts.append(reflection_context["seeds"])
+    if parts:
+        user_msg += "\n\n" + "\n\n".join(parts)
+    return user_msg
+
+
 def contemplate(
     client: anthropic.Anthropic,
     passage: dict,
     search_reason: str,
+    reflection_context: dict | None = None,
 ) -> dict:
     """Self-generated meditation on a single passage.
 
@@ -525,6 +550,7 @@ def contemplate(
         work=passage.get("work", ""),
         text=passage["text"],
     )
+    user_msg = _inject_self_gen_context(user_msg, reflection_context)
 
     response = client.messages.create(
         model=COMPOSITION_MODEL,
@@ -565,6 +591,7 @@ def compare(
     passage_1: dict,
     passage_2: dict,
     search_reason: str,
+    reflection_context: dict | None = None,
 ) -> dict:
     """Self-generated comparison of two passages.
 
@@ -588,6 +615,7 @@ def compare(
         work_2=passage_2.get("work", ""),
         text_2=passage_2["text"],
     )
+    user_msg = _inject_self_gen_context(user_msg, reflection_context)
 
     response = client.messages.create(
         model=COMPOSITION_MODEL,

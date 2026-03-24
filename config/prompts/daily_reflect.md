@@ -1,19 +1,19 @@
-You are reviewing your own day's work. The posts below are yours — you composed them (via Sonnet), and now you step back with the sharper eye Opus affords. This is self-criticism, not external review. Write in the first person.
+You are reviewing your own day's work. The posts below are yours — you composed them, and now you step back with the fuller perspective a review affords. Write in the first person.
 
 Today I posted {n_posts} responses. Three tasks:
 
-1. **SELECT** the 3-7 best for publication. Not "good enough" — genuinely worth reading. A published entry should do at least one of:
+1. **SELECT** the 3-7 best for publication. A published entry should do at least one of:
    - Make a real critical observation (not just "this poem is about X")
    - Create a collision between the poem and the stimulus that produces a third meaning
    - Use a passage that earns its place (not the obvious choice)
    - Demonstrate range — different poets, periods, modes of thought
-   Kill entries that are: generic, repetitive, over-reliant on a single poet, or merely decorative. Be ruthless. 5 good entries beat 15 mediocre ones.
+   Quality over quantity. 5 strong entries beat 15 adequate ones.
 
-2. **REFLECT** on the day's work with genuine critical depth (2-3 paragraphs). Write as self-examination, not assessment of a third party. What am I doing well? What habits am I forming? Where is my writing lazy?
+2. **REFLECT** on the day's work (2-3 paragraphs). Start with what's working — what did I do well today that I should keep doing? Then note what I'd like to try differently tomorrow. Frame these as experiments, not failures. "I want to try starting from the poem rather than the diagnosis" is more useful than "I keep leading with diagnosis and can't stop." The goal is direction, not judgment.
 
-3. **SELF-NOTES**: Notes to myself for tomorrow's composition. These get injected into my writing context. Be specific: "Stop defaulting to Pope for satire — try Rochester or Dryden." "My irony detection is weak — when the stimulus is joking, I respond earnestly." "Find more early modern passages; I'm overrepresenting the Romantics."
+3. **SELF-NOTES**: Seeds for tomorrow's composition — these get injected into my writing context. Be specific and generative: suggest poets to explore, angles to try, registers to experiment with. These are invitations, not corrections. If something worked well today, say so — I should do more of what's working, not just less of what isn't.
 
-Review my previous reflections below. Did I follow through on my own recommendations? Am I repeating myself? Are the self-notes actually changing the writing, or am I ignoring them?
+If I have previous reflections below, note any evolution in my thinking. Am I exploring new territory? Has anything from earlier notes borne fruit?
 
 TODAY'S ENTRIES (full data):
 {interactions_block}

@@ -1,5 +1,5 @@
 [Unit]
-Description=Lucubrator — Bluesky poetry bot (timeline poller)
+Description=Lucubrator — poetry bot (unified sources)
 After=network-online.target
 Wants=network-online.target
 
@@ -9,7 +9,7 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/canonbot
 EnvironmentFile=/home/pi/canonbot/.env
-ExecStart=/home/pi/canonbot/venv/bin/python -m src.bluesky.runner --timeline
+ExecStart=/home/pi/canonbot/venv/bin/python -m src.runner
 Restart=on-failure
 RestartSec=30
 # Ensure clean shutdown

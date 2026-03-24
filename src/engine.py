@@ -3,6 +3,7 @@
 import json
 import logging
 import time
+from pathlib import Path
 
 import anthropic
 import yaml
@@ -19,6 +20,7 @@ _DEFAULT_CONFIG = {
     "anti_repetition_hours": 48,
     "cooldown_after_post_seconds": 60,
     "poet_warning_threshold": 3,  # warn if poet used >N times in 48h
+    "poet_cooling_threshold": 5,  # hard filter: exclude poet from retrieval if used >N times in 48h
 }
 
 
@@ -43,8 +45,16 @@ class Engine:
         self.config = config or _load_engine_config()
         self._last_post_time: float = 0
 
-    def _build_reflection_context(self, passages: list[dict] | None) -> dict | None:
-        """Assemble reflection context for composition: latest reflection, self_notes, passage notes, poet warnings."""
+    def _get_cooled_poets(self) -> set[str]:
+        """Return poets that have been used too often recently and should be excluded from retrieval."""
+        poet_usage = self.store.get_poet_usage(hours=48)
+        threshold = self.config.get("poet_cooling_threshold", 5)
+        return {poet for poet, count in poet_usage.items() if count >= threshold}
+
+    def _build_reflection_context(
+        self, passages: list[dict] | None, seeds: str | None = None,
+    ) -> dict | None:
+        """Assemble reflection context for composition: latest reflection, self_notes, passage notes, poet warnings, seeds."""
         if not passages:
             return None
 
@@ -75,7 +85,21 @@ class Engine:
         if warnings:
             context["poet_warnings"] = warnings
 
+        # External seeds from source system
+        if seeds:
+            context["seeds"] = seeds
+
         return context if any(context.values()) else None
+
+    def _build_self_gen_context(self, seeds: str | None = None) -> dict | None:
+        """Build a lightweight reflection context for self-generated compositions."""
+        context = {}
+        latest = self.store.get_latest_reflection(period="daily")
+        if latest and latest.get("self_notes"):
+            context["self_notes"] = latest["self_notes"]
+        if seeds:
+            context["seeds"] = seeds
+        return context if context else None
 
     def _run_post_reflection(
         self, result: dict, interaction_id: int, stimulus: str, dry_run: bool
@@ -148,6 +172,7 @@ class Engine:
         source: str = "unknown",
         stimulus_uri: str | None = None,
         stimulus_author: str | None = None,
+        seeds: str | None = None,
         dry_run: bool = False,
     ) -> dict:
         """Run brain pipeline with rate limiting, anti-repetition, reflection, and logging.
@@ -172,6 +197,12 @@ class Engine:
         if self._last_post_time > 0 and elapsed < cooldown:
             return {"stimulus": stimulus, "rate_limited": True,
                     "reason": f"cooldown ({cooldown - elapsed:.0f}s remaining)"}
+
+        # Stimulus dedup: cap responses per stimulus at 2
+        stimulus_count = self.store.count_stimulus_responses(stimulus)
+        if stimulus_count >= 2:
+            return {"stimulus": stimulus, "rate_limited": True,
+                    "reason": f"stimulus dedup ({stimulus_count} responses already)"}
 
         # Anti-repetition: get recently used chunk_ids
         exclude_ids = self.store.get_used_chunk_ids(
@@ -201,9 +232,10 @@ class Engine:
             result["rate_limited"] = False
             return result
 
-        # Stage 2: Retrieval
+        # Stage 2: Retrieval (with poet cooling)
         search_queries = result["triage"].get("search_queries", [stimulus])
-        raw_passages = brain.retrieve(search_queries, exclude_ids=exclude_ids)
+        cooled_poets = self._get_cooled_poets()
+        raw_passages = brain.retrieve(search_queries, exclude_ids=exclude_ids, exclude_poets=cooled_poets)
         result["passages"] = safety.filter_passages(raw_passages)
 
         if not result["passages"]:
@@ -223,8 +255,8 @@ class Engine:
             result["rate_limited"] = False
             return result
 
-        # Build reflection context with actual retrieved passages
-        reflection_context = self._build_reflection_context(result["passages"])
+        # Build reflection context with actual retrieved passages + seeds
+        reflection_context = self._build_reflection_context(result["passages"], seeds=seeds)
 
         # Stage 3: Composition (with reflection context)
         the_problem = result["triage"].get("the_problem", "")
@@ -285,7 +317,7 @@ class Engine:
 
         return result
 
-    def self_generate(self, mode: str = "contemplate", dry_run: bool = False) -> dict:
+    def self_generate(self, mode: str = "contemplate", seeds: str | None = None, dry_run: bool = False) -> dict:
         """Run a self-generated meditation or comparison.
 
         mode: "contemplate" (single passage) or "compare" (two passages).
@@ -317,18 +349,24 @@ class Engine:
         query = direction.get("query", "")
         search_reason = direction.get("reason", "")
 
+        # Poet cooling for self-gen too
+        cooled_poets = self._get_cooled_poets()
+
         # If no query generated, pick a random passage
         if not query:
             raw_passages = brain.retrieve(
                 ["mortality", "desire", "power", "devotion", "loss"][random.randrange(5)],
-                n_results=10, exclude_ids=exclude_ids,
+                n_results=10, exclude_ids=exclude_ids, exclude_poets=cooled_poets,
             )
         else:
-            raw_passages = brain.retrieve([query], n_results=10, exclude_ids=exclude_ids)
+            raw_passages = brain.retrieve([query], n_results=10, exclude_ids=exclude_ids, exclude_poets=cooled_poets)
 
         passages = safety.filter_passages(raw_passages)
         if not passages:
             return {"decision": "skip", "skip_reason": "No passages found.", **result}
+
+        # Build reflection context for self-gen (seeds + self_notes)
+        self_gen_context = self._build_self_gen_context(seeds)
 
         if mode == "compare":
             # Pick passage 1, then find a contrasting passage 2
@@ -336,7 +374,9 @@ class Engine:
             # Use passage 1's text as query but exclude same poet
             second_query = passage_1["text"][:200]
             raw_second = brain.retrieve(
-                [second_query], n_results=10, exclude_ids=exclude_ids | {passage_1["chunk_id"]},
+                [second_query], n_results=10,
+                exclude_ids=exclude_ids | {passage_1["chunk_id"]},
+                exclude_poets=cooled_poets,
             )
             second_passages = [
                 p for p in safety.filter_passages(raw_second)
@@ -347,7 +387,7 @@ class Engine:
                 mode = "contemplate"
             else:
                 passage_2 = second_passages[0]
-                comp = brain.compare(self.client, passage_1, passage_2, search_reason)
+                comp = brain.compare(self.client, passage_1, passage_2, search_reason, reflection_context=self_gen_context)
                 comp_usage = comp.pop("_usage", {})
                 result["tokens_in"] += comp_usage.get("input_tokens", 0)
                 result["tokens_out"] += comp_usage.get("output_tokens", 0)
@@ -364,7 +404,7 @@ class Engine:
 
         if mode == "contemplate":
             passage = passages[0]
-            comp = brain.contemplate(self.client, passage, search_reason)
+            comp = brain.contemplate(self.client, passage, search_reason, reflection_context=self_gen_context)
             comp_usage = comp.pop("_usage", {})
             result["tokens_in"] += comp_usage.get("input_tokens", 0)
             result["tokens_out"] += comp_usage.get("output_tokens", 0)

@@ -22,13 +22,19 @@ def _get_collection():
     return _collection
 
 
-def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) -> list[dict]:
+def search(
+    query: str,
+    n_results: int = 5,
+    exclude_ids: set[str] | None = None,
+    exclude_poets: set[str] | None = None,
+) -> list[dict]:
     """Semantic search over the poetry corpus.
 
     Args:
         query: Text to match against.
         n_results: How many results to return.
-        exclude_ids: Chunk IDs to skip (anti-repetition stub).
+        exclude_ids: Chunk IDs to skip (anti-repetition).
+        exclude_poets: Poet names to filter out (cooling).
 
     Returns:
         List of passage dicts with keys: chunk_id, text, poet, work,
@@ -36,8 +42,13 @@ def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) 
     """
     col = _get_collection()
     # Fetch extra if we need to filter some out
-    fetch_n = n_results + len(exclude_ids) if exclude_ids else n_results
+    n_exclude = len(exclude_ids) if exclude_ids else 0
+    n_cool = (len(exclude_poets) * 3) if exclude_poets else 0
+    fetch_n = n_results + n_exclude + n_cool
     results = col.query(query_texts=[query], n_results=fetch_n)
+
+    # Normalise exclude_poets to lowercase for comparison
+    cool_poets = {p.lower() for p in exclude_poets} if exclude_poets else set()
 
     passages = []
     for i in range(len(results["ids"][0])):
@@ -45,6 +56,8 @@ def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) 
         if exclude_ids and chunk_id in exclude_ids:
             continue
         meta = results["metadatas"][0][i]
+        if cool_poets and meta.get("poet", "").lower() in cool_poets:
+            continue
         passages.append({
             "chunk_id": chunk_id,
             "text": results["documents"][0][i],
@@ -63,7 +76,12 @@ def search(query: str, n_results: int = 5, exclude_ids: set[str] | None = None) 
     return passages
 
 
-def search_multi(queries: list[str], n_results: int = 5, exclude_ids: set[str] | None = None) -> list[dict]:
+def search_multi(
+    queries: list[str],
+    n_results: int = 5,
+    exclude_ids: set[str] | None = None,
+    exclude_poets: set[str] | None = None,
+) -> list[dict]:
     """Run multiple semantic searches and merge results.
 
     Deduplicates by chunk_id, keeping the best (lowest) distance for each.
@@ -73,7 +91,7 @@ def search_multi(queries: list[str], n_results: int = 5, exclude_ids: set[str] |
 
     for query in queries:
         # Fetch more per query to get good coverage after dedup
-        hits = search(query, n_results=n_results, exclude_ids=exclude_ids)
+        hits = search(query, n_results=n_results, exclude_ids=exclude_ids, exclude_poets=exclude_poets)
         for p in hits:
             cid = p["chunk_id"]
             if cid not in best or p["distance"] < best[cid]["distance"]:

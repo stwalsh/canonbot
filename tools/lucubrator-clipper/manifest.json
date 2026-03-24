@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Lucubrator Clipper",
+  "version": "1.0",
+  "description": "Send pages to Lucubrator's stimuli folder",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_icon": "icon.png",
+    "default_title": "Send to Lucubrator"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
