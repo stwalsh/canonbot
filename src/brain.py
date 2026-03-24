@@ -348,9 +348,9 @@ _DAILY_REVIEW_TOOL = {
             "self_notes": {
                 "type": "string",
                 "description": (
-                    "Free-form notes to your future self (the composition model). "
-                    "Tonal corrections, poets to seek out, patterns to break, "
-                    "things you noticed about your own writing today."
+                    "Seeds for tomorrow's composition — these get injected into your writing context. "
+                    "Be specific and generative: poets to explore, angles to try, what worked well today "
+                    "and should continue. Invitations, not corrections. Must not be empty."
                 ),
             },
         },
@@ -512,6 +512,114 @@ def _generate_search_direction(
         "output_tokens": response.usage.output_tokens,
     }
     return result
+
+
+# Tool schema for long-form engage responses
+_ENGAGE_TOOL = {
+    "name": "engage_response",
+    "description": "Produce a long-form response to a bespoke stimulus.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "decision": {
+                "type": "string",
+                "enum": ["post", "skip"],
+                "description": "Whether to post or skip.",
+            },
+            "paragraphs": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "2-3 paragraphs of critical prose. Each can be as long as the thought requires.",
+            },
+            "passage_used": {
+                "type": "object",
+                "properties": {
+                    "chunk_id": {
+                        "type": "string",
+                        "description": "Copy the chunk_id EXACTLY as shown in the [chunk_id: ...] header of the primary passage.",
+                    },
+                    "poet": {"type": "string"},
+                    "poem_title": {"type": "string"},
+                },
+                "required": ["chunk_id", "poet", "poem_title"],
+            },
+            "skip_reason": {
+                "type": "string",
+                "description": "Why we're skipping. Only if decision is skip.",
+            },
+        },
+        "required": ["decision", "paragraphs"],
+    },
+}
+
+
+def engage(
+    client: anthropic.Anthropic,
+    stimulus_text: str,
+    passages: list[dict],
+    reflection_context: dict | None = None,
+) -> dict:
+    """Long-form response to a bespoke stimulus (article, provocation, clip).
+
+    Returns dict with decision, paragraphs, passage_used, skip_reason.
+    """
+    soul = _load_prompt("soul.md")
+    prompt_template = _load_prompt("engage.md")
+
+    passages_text = "\n\n".join(
+        f"[chunk_id: {p['chunk_id']}]\n"
+        f"[{p['poet']} — \"{p.get('poem_title', '')}\" ({p.get('date', '')}), {p.get('work', '')}]\n"
+        f"{p['text']}"
+        for p in passages
+    )
+
+    user_msg = prompt_template.format(
+        stimulus_text=stimulus_text,
+        passages_text=passages_text,
+    )
+
+    # Inject reflection context if available
+    if reflection_context:
+        parts = []
+        if reflection_context.get("self_notes"):
+            parts.append(f"NOTES FROM YOUR REVIEWER:\n{reflection_context['self_notes']}")
+        if reflection_context.get("seeds"):
+            parts.append(reflection_context["seeds"])
+        if parts:
+            user_msg += "\n\n" + "\n\n".join(parts)
+
+    response = client.messages.create(
+        model=COMPOSITION_MODEL,
+        max_tokens=2048,
+        system=soul,
+        messages=[{"role": "user", "content": user_msg}],
+        tools=[_ENGAGE_TOOL],
+        tool_choice={"type": "tool", "name": "engage_response"},
+    )
+
+    usage = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+
+    for block in response.content:
+        if block.type == "tool_use":
+            result = block.input
+            # Normalise paragraphs
+            paragraphs = result.get("paragraphs", [])
+            if isinstance(paragraphs, str):
+                paragraphs = [paragraphs]
+            result["paragraphs"] = [p.strip() for p in paragraphs if isinstance(p, str) and p.strip()]
+            # Store as posts for compatibility with the rest of the pipeline
+            result["posts"] = result["paragraphs"]
+            result["mode"] = "engage"
+            pu = result.get("passage_used")
+            if isinstance(pu, str):
+                result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            result["_usage"] = usage
+            return result
+
+    return {"decision": "skip", "mode": "engage", "posts": [], "paragraphs": [], "skip_reason": "No tool call.", "_usage": usage}
 
 
 def _inject_self_gen_context(user_msg: str, reflection_context: dict | None) -> str:

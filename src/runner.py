@@ -237,10 +237,51 @@ async def run(live: bool = False):
                         print(f"  [self] ERROR: {e}")
             continue
 
-        # Seed item: accumulate
+        # Seed item: accumulate, and engage if from stimuli_dir
         if item.mode == SourceMode.SEED:
             seeds.update(item)
             print(f"  [seed] Updated from {item.source_name}")
+
+            # Bespoke stimuli trigger a long-form engage response
+            if item.source_name.startswith("stimuli_dir:"):
+                print(f"  [engage] Long-form response to {item.source_name}...")
+                try:
+                    eg_result = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            engine.engage_stimulus,
+                            stimulus_text=item.text,
+                            source_name=item.source_name,
+                            seeds=seeds.as_context_string(),
+                            dry_run=dry_run,
+                        ),
+                        timeout=180,
+                    )
+                    eg_comp = eg_result.get("composition") or {}
+                    if eg_comp.get("decision") == "post":
+                        print(f"\n{'='*60}")
+                        print(f"  ENGAGE [{item.source_name}]:")
+                        for i, para in enumerate(eg_comp.get("paragraphs", []), 1):
+                            print(f"  [{i}] {para[:120]}...")
+                        pu = eg_comp.get("passage_used")
+                        if pu:
+                            print(f"  PASSAGE: {pu.get('poet')} — \"{pu.get('poem_title')}\" [{pu.get('chunk_id', '')}]")
+                        print(f"  [DRY RUN] interaction_id={eg_result.get('interaction_id')}")
+                        last_composition_time = time.time()
+                    else:
+                        print(f"  [engage] Skipped — {eg_comp.get('skip_reason', '?')}")
+
+                    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    tag = "DRY" if dry_run else "LIVE"
+                    logger.info(
+                        f"\n--- [{now}] [{tag}] [ENGAGE {item.source_name}] ---\n"
+                        f"Decision: {eg_comp.get('decision', 'skip')}\n"
+                        + ("\n".join(eg_comp.get("paragraphs", [])) if eg_comp.get("paragraphs") else "")
+                    )
+                except asyncio.TimeoutError:
+                    print("  [engage] TIMEOUT")
+                except Exception as e:
+                    print(f"  [engage] ERROR: {e}")
+
             continue
 
         # Triage item: process through engine

@@ -317,6 +317,76 @@ class Engine:
 
         return result
 
+    def engage_stimulus(self, stimulus_text: str, source_name: str = "stimulus",
+                        seeds: str | None = None, dry_run: bool = False) -> dict:
+        """Long-form response to a bespoke stimulus (clip, article, provocation).
+
+        Bypasses triage. Retrieves passages based on the stimulus, then runs
+        the engage composition mode (2-3 paragraphs, no post-length constraint).
+        """
+        result = {"stimulus": stimulus_text, "tokens_in": 0, "tokens_out": 0}
+
+        # Generate search queries from the stimulus (use first 500 chars as query)
+        queries = [stimulus_text[:500]]
+        exclude_ids = self.store.get_used_chunk_ids(hours=self.config["anti_repetition_hours"])
+        cooled_poets = self._get_cooled_poets()
+
+        raw_passages = brain.retrieve(queries, n_results=8, exclude_ids=exclude_ids, exclude_poets=cooled_poets)
+        passages = safety.filter_passages(raw_passages)
+
+        if not passages:
+            return {"decision": "skip", "skip_reason": "No passages found.", **result}
+
+        # Build reflection context with seeds
+        self_gen_context = self._build_self_gen_context(seeds)
+
+        comp = brain.engage(self.client, stimulus_text, passages, reflection_context=self_gen_context)
+        comp_usage = comp.pop("_usage", {})
+        result["tokens_in"] += comp_usage.get("input_tokens", 0)
+        result["tokens_out"] += comp_usage.get("output_tokens", 0)
+        result["composition"] = comp
+        result["passages"] = passages
+
+        # Enrich passage_used
+        pu = comp.get("passage_used")
+        if pu and pu.get("chunk_id"):
+            for p in passages:
+                if p["chunk_id"] == pu["chunk_id"]:
+                    pu["text"] = p.get("text", "")
+                    break
+
+        if comp.get("decision") == "post":
+            self._last_post_time = time.time()
+
+        # Log as interaction
+        triage_data = {
+            "engage": comp.get("decision") == "post",
+            "reason": "Bespoke stimulus — long-form engage mode",
+            "search_queries": queries,
+            "the_problem": stimulus_text[:200],
+        }
+        interaction_id = self.store.log_interaction(
+            source=source_name,
+            stimulus_text=stimulus_text,
+            stimulus_uri=None,
+            stimulus_author="interlocutor",
+            triage=triage_data,
+            passages=passages,
+            composition=comp,
+            tokens_in=result.get("tokens_in", 0),
+            tokens_out=result.get("tokens_out", 0),
+            dry_run=dry_run,
+        )
+        result["interaction_id"] = interaction_id
+        result["mode"] = "engage"
+        result["rate_limited"] = False
+
+        # Post-composition reflection
+        if comp.get("decision") == "post":
+            self._run_post_reflection(result, interaction_id, stimulus_text[:200], dry_run)
+
+        return result
+
     def self_generate(self, mode: str = "contemplate", seeds: str | None = None, dry_run: bool = False) -> dict:
         """Run a self-generated meditation or comparison.
 
