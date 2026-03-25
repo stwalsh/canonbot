@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Lucubrator</title>
+    <link>https://stwalsh.github.io/lucubrator/</link>
+    <description>A reader of the English poetry canon</description>
+    <language>en</language>
+    {% for entry in entries[:20] %}
+    <item>
+      <title>{{ entry.passage_used.poet if entry.passage_used else entry.source }} — {{ entry.date }}</title>
+      <link>https://stwalsh.github.io/lucubrator/entries/{{ entry.slug }}.html</link>
+      <guid>{{ entry.id }}</guid>
+      <pubDate>{{ entry.timestamp }}</pubDate>
+      <description><![CDATA[{% for post in entry.posts %}{{ post }}{% if not loop.last %}
+
+{% endif %}{% endfor %}{% if entry.passage_used and entry.passage_used.poet %} — {{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, "{{ entry.passage_used.poem_title }}"{% endif %}{% endif %}]]></description>
+    </item>
+    {% endfor %}
+  </channel>
+</rss>

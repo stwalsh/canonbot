@@ -199,6 +199,18 @@ def build(store: Store) -> Path:
         html = notebook_tpl.render(root="../", date=date, notes=notes)
         (BUILD_DIR / "notebooks" / f"{date}.html").write_text(html, encoding="utf-8")
 
+    # Render RSS feed (most recent entries first, autoescape off for XML)
+    feed_env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        autoescape=False,
+    )
+    feed_tpl = feed_env.get_template("feed.xml")
+    feed_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
+    (BUILD_DIR / "feed.xml").write_text(
+        feed_tpl.render(entries=feed_entries),
+        encoding="utf-8",
+    )
+
     print(f"  Built {len(entries)} entries, {len(notebook_by_date)} notebooks, {len(reflections_by_date)} reflections -> {BUILD_DIR}")
     return BUILD_DIR
 
