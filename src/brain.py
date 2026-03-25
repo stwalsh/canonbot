@@ -324,12 +324,17 @@ _DAILY_REVIEW_TOOL = {
                 "items": {
                     "type": "object",
                     "properties": {
-                        "id": {"type": "integer", "description": "Interaction ID to publish."},
+                        "id": {"type": "integer", "description": "Interaction ID."},
+                        "tier": {
+                            "type": "string",
+                            "enum": ["publish", "notebook"],
+                            "description": "publish: long-form entry for full publication with editorial revision. notebook: short-form entry for the daily notebook page.",
+                        },
                         "reason": {"type": "string", "description": "Brief reason for selecting this entry (1 sentence)."},
                     },
-                    "required": ["id", "reason"],
+                    "required": ["id", "tier", "reason"],
                 },
-                "description": "3-7 interaction IDs to publish, with reasoning.",
+                "description": "Select 3-5 long-form entries (tier: publish) and 5-10 short-form entries (tier: notebook).",
             },
             "summary": {
                 "type": "string",
@@ -461,6 +466,70 @@ def daily_review(
         "selected_ids": [], "summary": "", "preoccupations": [],
         "recommendations": [], "self_notes": "", "_usage": usage,
     }
+
+
+# Tool schema for editorial revision
+_REVISE_TOOL = {
+    "name": "revise_entry",
+    "description": "Return the revised text of a selected entry.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "revised_posts": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "The revised paragraphs. Return the full text, not a diff. If no changes needed, return the original unchanged.",
+            },
+            "changes_made": {
+                "type": "string",
+                "description": "Brief note on what was changed, or 'no changes' if the entry was clean.",
+            },
+        },
+        "required": ["revised_posts", "changes_made"],
+    },
+}
+
+
+def revise_entry(
+    client: anthropic.Anthropic,
+    entry_text: str,
+    stimulus_context: str,
+    passage_context: str,
+) -> dict:
+    """Editorially revise a selected entry, catching tics and formulaic habits.
+
+    Returns dict with revised_posts (list of paragraphs) and changes_made.
+    """
+    soul = _load_prompt("soul.md")
+    prompt_template = _load_prompt("revise.md")
+
+    user_msg = prompt_template.format(
+        entry_text=entry_text,
+        stimulus_context=stimulus_context,
+        passage_context=passage_context,
+    )
+
+    response = client.messages.create(
+        model=DAILY_REVIEW_MODEL,  # Opus for editorial quality
+        max_tokens=2048,
+        system=soul,
+        messages=[{"role": "user", "content": user_msg}],
+        tools=[_REVISE_TOOL],
+        tool_choice={"type": "tool", "name": "revise_entry"},
+    )
+
+    usage = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+
+    for block in response.content:
+        if block.type == "tool_use":
+            result = block.input
+            result["_usage"] = usage
+            return result
+
+    return {"revised_posts": [], "changes_made": "revision failed", "_usage": usage}
 
 
 def _generate_search_direction(

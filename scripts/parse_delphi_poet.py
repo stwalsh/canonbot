@@ -75,6 +75,18 @@ POET_CONFIG = {
         "date": "1675",
         "slug": "rochester",
     },
+    "Elizabeth Barrett Browning": {
+        "author": "Elizabeth Barrett Browning",
+        "date": "1856",
+        "slug": "ebb",
+        "skip_collections": {"The Battle of Marathon"},
+    },
+    "Matthew Arnold": {
+        "author": "Matthew Arnold",
+        "date": "1853",
+        "slug": "arnold",
+        "skip_collections": {"Merope. a Tragedy"},
+    },
 }
 
 
@@ -177,7 +189,7 @@ def parse_poet_html(html_content: str, config: dict) -> list[dict]:
             h1_class = h1s[0].get("class", "")
 
             # Top-level sections
-            if h1_class == "h2":
+            if h1_class in ("h1", "h2"):
                 if "Poetry" in h1_text or "Poem" in h1_text:
                     in_poetry_section = True
                     in_skip_section = False
@@ -186,10 +198,17 @@ def parse_poet_html(html_content: str, config: dict) -> list[dict]:
                     in_poetry_section = False
                     in_skip_section = True
                     print(f"  Skipping section: {h1_text}")
+                elif in_poetry_section:
+                    # h1.h2 inside poetry section = collection title (e.g. Arnold)
+                    current_collection = h1_text
+                    if current_collection in skip_collections:
+                        print(f"  Skipping collection: {current_collection}")
+                    else:
+                        print(f"    Collection: {current_collection}")
                 continue
 
             # Collection titles within poetry section
-            if h1_class in ("h3", "h5") and in_poetry_section:
+            if h1_class in ("h3", "h4", "h5") and in_poetry_section:
                 current_collection = h1_text
                 if current_collection in skip_collections:
                     print(f"  Skipping collection: {current_collection}")

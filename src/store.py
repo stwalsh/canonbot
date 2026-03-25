@@ -93,6 +93,10 @@ class Store:
             self._conn.execute("ALTER TABLE interactions ADD COLUMN published INTEGER DEFAULT 0")
             self._conn.commit()
 
+        if "edited_posts" not in ix_cols:
+            self._conn.execute("ALTER TABLE interactions ADD COLUMN edited_posts TEXT")
+            self._conn.commit()
+
         cursor = self._conn.execute("PRAGMA table_info(reflections)")
         ref_cols = {row[1] for row in cursor.fetchall()}
         if "self_notes" not in ref_cols:
@@ -102,14 +106,22 @@ class Store:
     def close(self):
         self._conn.close()
 
-    def mark_published(self, interaction_ids: list[int]):
-        """Set published=1 for the given interaction IDs."""
+    def mark_published(self, interaction_ids: list[int], tier: int = 1):
+        """Set published flag for the given interaction IDs. tier: 1=publish, 2=notebook."""
         if not interaction_ids:
             return
         placeholders = ",".join("?" * len(interaction_ids))
         self._conn.execute(
-            f"UPDATE interactions SET published = 1 WHERE id IN ({placeholders})",
-            interaction_ids,
+            f"UPDATE interactions SET published = ? WHERE id IN ({placeholders})",
+            [tier] + interaction_ids,
+        )
+        self._conn.commit()
+
+    def store_edited_posts(self, interaction_id: int, edited_posts: list[str]):
+        """Store editorially revised text alongside the original."""
+        self._conn.execute(
+            "UPDATE interactions SET edited_posts = ? WHERE id = ?",
+            (json.dumps(edited_posts), interaction_id),
         )
         self._conn.commit()
 
@@ -519,7 +531,7 @@ class Store:
         for row in rows:
             d = dict(row)
             for field in ("triage_queries", "passages_retrieved", "passage_used",
-                          "posts", "response_uris"):
+                          "posts", "response_uris", "edited_posts"):
                 if d.get(field):
                     try:
                         d[field] = json.loads(d[field])

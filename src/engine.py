@@ -472,6 +472,28 @@ class Engine:
                             pu["text"] = p.get("text", "")
                             break
 
+        if mode == "engage_self":
+            # Long-form self-generated essay — uses engage() with search_reason as stimulus
+            comp = brain.engage(
+                self.client,
+                stimulus_text=f"[Self-directed exploration] {search_reason}",
+                passages=passages[:5],
+                reflection_context=self_gen_context,
+            )
+            comp_usage = comp.pop("_usage", {})
+            result["tokens_in"] += comp_usage.get("input_tokens", 0)
+            result["tokens_out"] += comp_usage.get("output_tokens", 0)
+            result["composition"] = comp
+            result["passages"] = passages[:5]
+
+            # Enrich passage_used
+            pu = comp.get("passage_used")
+            if pu and pu.get("chunk_id"):
+                for p in passages:
+                    if p["chunk_id"] == pu["chunk_id"]:
+                        pu["text"] = p.get("text", "")
+                        break
+
         if mode == "contemplate":
             passage = passages[0]
             comp = brain.contemplate(self.client, passage, search_reason, reflection_context=self_gen_context)
@@ -554,13 +576,48 @@ class Engine:
 
         usage = result.pop("_usage", {})
 
-        # Mark selected entries as published
+        # Mark selected entries as published (tiered)
         selected = result.get("selected_ids", [])
         valid_ids = {ix["id"] for ix in interactions}
-        publish_ids = [s["id"] for s in selected if s.get("id") in valid_ids]
+        ix_by_id = {ix["id"]: ix for ix in interactions}
+
+        publish_ids = [s["id"] for s in selected if s.get("tier") == "publish" and s.get("id") in valid_ids]
+        notebook_ids = [s["id"] for s in selected if s.get("tier") == "notebook" and s.get("id") in valid_ids]
+
+        # Backward compat: if no tier field, treat all as publish
+        if not publish_ids and not notebook_ids:
+            publish_ids = [s["id"] for s in selected if s.get("id") in valid_ids]
+
         if publish_ids:
-            self.store.mark_published(publish_ids)
-            log.info("Marked %d entries as published: %s", len(publish_ids), publish_ids)
+            self.store.mark_published(publish_ids, tier=1)
+            log.info("Marked %d entries for publication: %s", len(publish_ids), publish_ids)
+        if notebook_ids:
+            self.store.mark_published(notebook_ids, tier=2)
+            log.info("Marked %d entries for notebook: %s", len(notebook_ids), notebook_ids)
+
+        # Pass 2: Editorial revision of published entries
+        for entry_id in publish_ids:
+            ix = ix_by_id.get(entry_id)
+            if not ix:
+                continue
+            posts = ix.get("posts") or []
+            entry_text = "\n\n".join(posts) if isinstance(posts, list) else str(posts)
+            stimulus = ix.get("stimulus_text", "")[:500]
+            pu = ix.get("passage_used") or {}
+            passage_ctx = ""
+            if isinstance(pu, dict) and pu.get("text"):
+                passage_ctx = f"{pu.get('poet', '')} — \"{pu.get('poem_title', '')}\"\n{pu['text']}"
+
+            try:
+                revision = brain.revise_entry(self.client, entry_text, stimulus, passage_ctx)
+                rev_usage = revision.pop("_usage", {})
+                revised = revision.get("revised_posts", [])
+                changes = revision.get("changes_made", "")
+                if revised:
+                    self.store.store_edited_posts(entry_id, revised)
+                    log.info("Revised entry %d: %s", entry_id, changes)
+            except Exception:
+                log.exception("Revision failed for entry %d (non-fatal)", entry_id)
 
         # Store reflection
         self.store.log_reflection(
@@ -574,7 +631,7 @@ class Engine:
         )
 
         log.info(
-            "Daily Opus review stored. Selected %d/%d entries. Preoccupations: %s",
-            len(publish_ids), len(interactions), result.get("preoccupations"),
+            "Daily review stored. Published: %d, Notebook: %d, Total: %d. Preoccupations: %s",
+            len(publish_ids), len(notebook_ids), len(interactions), result.get("preoccupations"),
         )
         return result

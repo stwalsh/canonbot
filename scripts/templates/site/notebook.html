@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Notebook — {{ date }} — Lucubrator{% endblock %}
+{% block content %}
+<article class="notebook">
+    <h2 class="entry-date">Notebook — {{ date }}</h2>
+
+    {% for note in notes %}
+    <div class="notebook-entry">
+        {% for post in note.posts %}
+        <p>{{ post }}</p>
+        {% endfor %}
+        {% if note.poet %}
+        <cite>{{ note.poet }}{% if note.poem_title %}, &ldquo;{{ note.poem_title }}&rdquo;{% endif %}</cite>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <nav class="entry-nav">
+        <a href="{{ root }}index.html">&larr; all entries</a>
+    </nav>
+</article>
+{% endblock %}

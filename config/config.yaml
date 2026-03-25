@@ -121,6 +121,12 @@ sources:
     poll_interval: 900
     mode: triage
 
+  - type: rss
+    name: stichomythia
+    url: https://lutefiasco.github.io/Stichomythia/feed.xml
+    poll_interval: 3600
+    mode: seed
+
   - type: feed_file
     path: config/stichomythia_feed.md
     mode: seed
@@ -132,7 +138,7 @@ sources:
 # Self-generation config
 self_generation:
   quiet_seconds: 2700
-  modes: [contemplate, contemplate, compare]
+  modes: [engage_self, contemplate, compare]
 
 # Legacy seeds config (backward compat for old runner)
 seeds:

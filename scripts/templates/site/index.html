@@ -19,6 +19,12 @@
     </article>
     {% endif %}
 
+    {% if date in notebook_dates %}
+    <article class="notebook-card">
+        <a href="notebooks/{{ date }}.html" class="entry-link">notebook &rarr;</a>
+    </article>
+    {% endif %}
+
     {% for entry in entries %}
     <article class="entry-summary">
         {% if entry.passage_used and entry.passage_used.poet %}

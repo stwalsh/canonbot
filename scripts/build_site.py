@@ -85,16 +85,20 @@ def build(store: Store) -> Path:
         if ix.get("source") != "test"
     ]
 
-    # Publication filter: show published=1, OR entries from before the first Opus review
+    # Publication filter: published=1 (full entries), published=2 (notebook), or pre-review era
     first_review = _first_review_date(store)
     if first_review:
         interactions = [
             ix for ix in all_interactions
-            if ix.get("published") or (ix.get("timestamp", "")[:10] < first_review)
+            if ix.get("published") in (1, 2) or (ix.get("timestamp", "")[:10] < first_review)
         ]
     else:
-        # No Opus review has ever run — show everything (pre-review era)
         interactions = all_interactions
+
+    # Separate notebook entries
+    notebook_interactions = [ix for ix in interactions if ix.get("published") == 2]
+    # Published entries (tier 1 + pre-review era)
+    interactions = [ix for ix in interactions if ix.get("published") != 2]
     reflections = store.get_all_reflections()
 
     # Prepare entries
@@ -108,7 +112,7 @@ def build(store: Store) -> Path:
             "stimulus_text": ix.get("stimulus_text", ""),
             "stimulus_author": ix.get("stimulus_author", ""),
             "source": ix.get("source", ""),
-            "posts": ix.get("posts") or [],
+            "posts": ix.get("edited_posts") or ix.get("posts") or [],
             "passage_used": _get_passage_text(ix, store),
             "triage_reason": ix.get("triage_reason", ""),
             "the_problem": ix.get("the_problem", ""),
@@ -136,12 +140,31 @@ def build(store: Store) -> Path:
         if date:
             reflections_by_date[date] = r
 
+    # Prepare notebook entries by date
+    notebook_by_date = defaultdict(list)
+    for ix in notebook_interactions:
+        date = ix["timestamp"][:10] if ix.get("timestamp") else "undated"
+        posts = ix.get("posts") or []
+        pu = ix.get("passage_used")
+        if isinstance(pu, str):
+            try:
+                pu = json.loads(pu)
+            except (json.JSONDecodeError, TypeError):
+                pu = None
+        notebook_by_date[date].append({
+            "id": ix["id"],
+            "posts": posts,
+            "poet": pu.get("poet", "") if isinstance(pu, dict) else "",
+            "poem_title": pu.get("poem_title", "") if isinstance(pu, dict) else "",
+        })
+
     # Clean + create build dir
     if BUILD_DIR.exists():
         shutil.rmtree(BUILD_DIR)
     BUILD_DIR.mkdir(parents=True)
     (BUILD_DIR / "entries").mkdir()
     (BUILD_DIR / "reflections").mkdir()
+    (BUILD_DIR / "notebooks").mkdir()
 
     # Copy CSS
     shutil.copy(TEMPLATE_DIR / "style.css", BUILD_DIR / "style.css")
@@ -153,6 +176,7 @@ def build(store: Store) -> Path:
             root="",
             entries_by_date=entries_by_date,
             reflections_by_date=reflections_by_date,
+            notebook_dates=sorted(notebook_by_date.keys(), reverse=True),
         ),
         encoding="utf-8",
     )
@@ -169,7 +193,13 @@ def build(store: Store) -> Path:
         html = reflection_tpl.render(root="../", date=date, reflection=refl)
         (BUILD_DIR / "reflections" / f"{date}.html").write_text(html, encoding="utf-8")
 
-    print(f"  Built {len(entries)} entries, {len(reflections_by_date)} reflections -> {BUILD_DIR}")
+    # Render notebooks
+    notebook_tpl = env.get_template("notebook.html")
+    for date, notes in notebook_by_date.items():
+        html = notebook_tpl.render(root="../", date=date, notes=notes)
+        (BUILD_DIR / "notebooks" / f"{date}.html").write_text(html, encoding="utf-8")
+
+    print(f"  Built {len(entries)} entries, {len(notebook_by_date)} notebooks, {len(reflections_by_date)} reflections -> {BUILD_DIR}")
     return BUILD_DIR
 
 
