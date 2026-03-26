@@ -444,7 +444,7 @@ def daily_review(
 
     response = client.messages.create(
         model=DAILY_REVIEW_MODEL,
-        max_tokens=2048,
+        max_tokens=4096,
         system=soul,
         messages=[{"role": "user", "content": user_msg}],
         tools=[_DAILY_REVIEW_TOOL],

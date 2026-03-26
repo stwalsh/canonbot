@@ -24,3 +24,4 @@ config/interlocutors/
 
 # Claude Code
 .claude/
+config/stimuli/
