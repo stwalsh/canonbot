@@ -74,7 +74,9 @@ cite { display: block; font-size: 0.8rem; color: var(--muted); font-style: norma
 .passage { margin: 1rem 0; }
 .passage cite { margin-top: 0.5rem; font-style: italic; }
 
-/* Entry link */
+/* Source + entry links */
+.source-link { color: var(--accent); text-decoration: none; }
+.source-link:hover { text-decoration: underline; }
 .entry-link { font-size: 0.8rem; color: var(--accent); }
 
 /* Full entry page */

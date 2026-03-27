@@ -2,6 +2,8 @@
 
 import json
 import logging
+import random
+import re
 import time
 from pathlib import Path
 
@@ -13,6 +15,40 @@ from src import safety
 from src.store import Store
 
 log = logging.getLogger(__name__)
+
+STRATEGIES_FILE = Path("config/oblique_strategies.md")
+
+
+def _load_strategies() -> list[dict]:
+    """Load oblique strategies from markdown file. Returns list of {text, source}."""
+    if not STRATEGIES_FILE.exists():
+        return []
+    content = STRATEGIES_FILE.read_text(encoding="utf-8")
+    strategies = []
+    current_source = "unknown"
+    for line in content.splitlines():
+        line = line.strip()
+        if line.startswith("## "):
+            if "eno" in line.lower() or "schmidt" in line.lower():
+                current_source = "eno"
+            else:
+                current_source = "lucubrator"
+        elif line.startswith("- "):
+            strategies.append({"text": line[2:].strip(), "source": current_source})
+    return strategies
+
+
+_STRATEGIES: list[dict] | None = None
+
+
+def _draw_strategy() -> dict | None:
+    """Draw a random oblique strategy. Caches the deck on first call."""
+    global _STRATEGIES
+    if _STRATEGIES is None:
+        _STRATEGIES = _load_strategies()
+    if not _STRATEGIES:
+        return None
+    return random.choice(_STRATEGIES)
 
 _DEFAULT_CONFIG = {
     "max_responses_per_hour": 10,
@@ -89,6 +125,11 @@ class Engine:
         if seeds:
             context["seeds"] = seeds
 
+        # Oblique strategy
+        strategy = _draw_strategy()
+        if strategy:
+            context["oblique_strategy"] = strategy["text"]
+
         return context if any(context.values()) else None
 
     def _build_self_gen_context(self, seeds: str | None = None) -> dict | None:
@@ -99,6 +140,12 @@ class Engine:
             context["self_notes"] = latest["self_notes"]
         if seeds:
             context["seeds"] = seeds
+
+        # Oblique strategy
+        strategy = _draw_strategy()
+        if strategy:
+            context["oblique_strategy"] = strategy["text"]
+
         return context if context else None
 
     def _run_post_reflection(

@@ -110,6 +110,8 @@ def build(store: Store) -> Path:
             "date": ix["timestamp"][:10] if ix.get("timestamp") else "undated",
             "timestamp": ix.get("timestamp", ""),
             "stimulus_text": ix.get("stimulus_text", ""),
+            "stimulus_text_short": (ix.get("stimulus_text", "") or "")[:300],
+            "stimulus_uri": ix.get("stimulus_uri", ""),
             "stimulus_author": ix.get("stimulus_author", ""),
             "source": ix.get("source", ""),
             "posts": ix.get("edited_posts") or ix.get("posts") or [],

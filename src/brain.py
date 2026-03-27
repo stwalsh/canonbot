@@ -180,6 +180,12 @@ def compose(
         if reflection_context.get("seeds"):
             context_parts.append(reflection_context["seeds"])
 
+        if reflection_context.get("oblique_strategy"):
+            context_parts.append(
+                f"OBLIQUE STRATEGY (draw one, follow it or argue with it — let it change the shape of what you write):\n"
+                f"\"{reflection_context['oblique_strategy']}\""
+            )
+
         if context_parts:
             user_msg += "\n\n" + "\n\n".join(context_parts)
 
@@ -654,6 +660,11 @@ def engage(
             parts.append(f"NOTES FROM YOUR REVIEWER:\n{reflection_context['self_notes']}")
         if reflection_context.get("seeds"):
             parts.append(reflection_context["seeds"])
+        if reflection_context.get("oblique_strategy"):
+            parts.append(
+                f"OBLIQUE STRATEGY (draw one, follow it or argue with it — let it change the shape of what you write):\n"
+                f"\"{reflection_context['oblique_strategy']}\""
+            )
         if parts:
             user_msg += "\n\n" + "\n\n".join(parts)
 
@@ -692,7 +703,7 @@ def engage(
 
 
 def _inject_self_gen_context(user_msg: str, reflection_context: dict | None) -> str:
-    """Append self_notes and seeds to a self-gen prompt if available."""
+    """Append self_notes, seeds, and oblique strategy to a self-gen prompt if available."""
     if not reflection_context:
         return user_msg
     parts = []
@@ -700,6 +711,11 @@ def _inject_self_gen_context(user_msg: str, reflection_context: dict | None) -> 
         parts.append(f"NOTES FROM YOUR REVIEWER:\n{reflection_context['self_notes']}")
     if reflection_context.get("seeds"):
         parts.append(reflection_context["seeds"])
+    if reflection_context.get("oblique_strategy"):
+        parts.append(
+            f"OBLIQUE STRATEGY (draw one, follow it or argue with it — let it change the shape of what you write):\n"
+            f"\"{reflection_context['oblique_strategy']}\""
+        )
     if parts:
         user_msg += "\n\n" + "\n\n".join(parts)
     return user_msg

@@ -31,10 +31,12 @@
         <h3 class="entry-title">{{ entry.passage_used.poet.split()[-1] }}</h3>
         {% endif %}
 
+        {% if entry.stimulus_text_short %}
         <div class="stimulus">
-            <blockquote>{{ entry.stimulus_text }}</blockquote>
-            <cite>{{ entry.stimulus_author or "anonymous" }}</cite>
+            <blockquote>{{ entry.stimulus_text_short }}{% if entry.stimulus_text|length > 300 %}&hellip;{% endif %}</blockquote>
+            <cite>{{ entry.stimulus_author or "anonymous" }}{% if entry.stimulus_uri %} &middot; <a href="{{ entry.stimulus_uri }}" class="source-link">source</a>{% endif %}</cite>
         </div>
+        {% endif %}
 
         {% if entry.posts %}
         <div class="bot-post">
@@ -44,7 +46,12 @@
         </div>
         {% endif %}
 
-        {% if entry.passage_used %}
+        {% if entry.passage_used and entry.passage_used.text %}
+        <div class="passage">
+            <blockquote class="verse">{{ entry.passage_used.text }}</blockquote>
+            <cite>{{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}</cite>
+        </div>
+        {% elif entry.passage_used %}
         <div class="attribution">
             <cite>{{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}</cite>
         </div>

@@ -7,8 +7,8 @@
     <section class="triptych">
         <div class="stimulus">
             <h3>Stimulus</h3>
-            <blockquote>{{ entry.stimulus_text }}</blockquote>
-            <cite>{{ entry.stimulus_author or "anonymous" }}</cite>
+            <blockquote>{{ entry.stimulus_text_short }}{% if entry.stimulus_text|length > 300 %}&hellip;{% endif %}</blockquote>
+            <cite>{{ entry.stimulus_author or "anonymous" }}{% if entry.stimulus_uri %} &middot; <a href="{{ entry.stimulus_uri }}" class="source-link">source</a>{% endif %}</cite>
         </div>
 
         {% if entry.posts %}
