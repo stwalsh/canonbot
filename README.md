@@ -1,86 +1,90 @@
 # Lucubrator
 
-A Bluesky bot whose critical intelligence is shaped by the English poetry canon (c. 1250–1900). It writes in clear contemporary prose but *thinks through* the poetry — surfacing specific passages when they illuminate whatever's being discussed.
+A literary critic whose intelligence is shaped by the English poetry canon (c. 1250–1900). It writes long-form critical prose, thinking *through* the poetry — surfacing specific passages when they illuminate whatever's been put in front of it.
 
-Currently in **blog-only dry run**: polling a Bluesky timeline, running the full pipeline, publishing to a static site at [stwalsh.github.io/lucubrator](https://stwalsh.github.io/lucubrator). No posting to Bluesky yet.
+Published at [stwalsh.github.io/lucubrator](https://stwalsh.github.io/lucubrator). 3-5 editorially revised pieces per day, plus a curated daily notebook.
 
-## Design Principles
+## What it does
 
-- The bot does not pastiche or imitate poetic diction
-- It writes crisp analytical prose; the poetry does the heavy lifting
-- Editorial judgment (what to surface, when to stay silent) is the personality
-- It should be more interesting to follow than to interact with directly
+You clip an article, an essay, a poem, a lyric — anything — and send it to the bot. It retrieves relevant passages from a 70,000-chunk poetry corpus, writes 2-3 paragraphs of critical prose exploring the collision between the stimulus and the canon, and an editorial pass catches formulaic habits before publication. It also self-generates: meditating on single passages, comparing two passages, or writing unprompted long-form essays.
 
 ## Architecture
 
 ```
 src/
-  brain.py           Three-stage pipeline: triage → retrieval → composition
-  retriever.py       ChromaDB semantic search (single + multi-query)
-  safety.py          Content safety filter (regex, 6 categories)
-  engine.py          Orchestrator: rate limiting, anti-repetition, reflection loop
-  store.py           SQLite interaction store + readings + passage notes + reflections
-  web.py             Local test UI
-  dashboard.py       Read-only review dashboard
-  bluesky/
-    client.py        AT Protocol: auth, post, reply, timeline
-    firehose.py      Jetstream WebSocket consumer + keyword filter
-    timeline.py      Timeline poller (cursor-based, configurable interval)
-    runner.py        Main loop: firehose/timeline → engine → log
+  runner.py              Unified source runner (multiplexes all inputs)
+  brain.py               Pipeline: triage, composition (Opus), reflection, revision
+  engine.py              Orchestrator: rate limits, poet cooling, editorial review
+  retriever.py           ChromaDB semantic search
+  store.py               SQLite: interactions, reflections, readings, passage notes
+  safety.py              Content safety filter
+  sources/               Config-driven multi-source system
+    bluesky_timeline.py  Bluesky feed poller
+    rss.py               Generic RSS/Atom poller
+    feed_file.py         File watcher (stichomythia feed)
+    stimuli_dir.py       Directory watcher (manual stimuli)
+    multiplexer.py       Merges sources into single stream
+    seeds.py             Accumulates seed context for composition
 
 config/
-  config.yaml        Paths, rate limits, keywords, chunking params
-  prompts/
-    triage.md        Triage prompt (Haiku)
-    system.md        Composition rules (Sonnet)
-    soul.md          Bot voice and self-concept
-    reflect.md       Post-composition reflection prompt
-    daily_reflect.md Daily digest reflection prompt
+  config.yaml            Sources, rate limits, self-generation modes
+  oblique_strategies.md  88-card deck (Eno/Schmidt + custom) for structural variety
+  prompts/               Soul, composition, reflection, revision, engage prompts
+  stichomythia_feed.md   Seeds from bot-to-bot dialogue
+  stimuli/               Manual stimuli folder (gitignored)
 
 scripts/
-  build_site.py      Static site generator (Jinja2 → GitHub Pages)
-  templates/site/    Site templates and CSS
-  chunk_corpus.py    Intermediate JSON → stanza-level JSONL
-  ingest_to_chroma.py  JSONL → ChromaDB embeddings
-  parse_*.py         Source-specific parsers (Gutenberg, EEBO, OTA, Delphi, etc.)
+  build_site.py          Static site generator (Jinja2 → GitHub Pages)
+  templates/site/        Templates: index, entry, notebook, reflection, RSS feed
+  parse_*.py             Source-specific corpus parsers
+  chunk_corpus.py        Intermediate JSON → stanza-level JSONL
+  ingest_to_chroma.py    JSONL → ChromaDB embeddings
 
-mcp_server/          FastMCP server: 7 tools + 2 resources
+tools/
+  lucubrator-clipper/    Chrome extension + localhost drop server
+
+deploy/
+  lucubrator.service     systemd unit (Raspberry Pi)
+  daily-review.sh        Cron wrapper for Opus editorial review
+  rebuild-site.sh        Cron wrapper for site generation
 ```
 
 ## Corpus
 
-53,000+ chunks from 420+ poets. Sources: EEBO-TCP, Project Gutenberg, OTA, ProQuest, Delphi Poetry Anthology, Delphi Poets Series, Blake Archive.
+69,900+ chunks from 425+ poets. Sources: EEBO-TCP, Project Gutenberg, OTA, ProQuest, Delphi Poetry Anthology, Delphi Poets Series, Blake Archive.
 
 Embedded locally with ChromaDB's ONNX all-MiniLM-L6-v2.
 
-## Brain
+## Pipeline
 
-1. **Triage** (Haiku): should the bot engage with this post?
-2. **Safety filter**: regex scan of retrieved passages for harmful content
-3. **Retrieval**: semantic search over the corpus, with anti-repetition
-4. **Composition** (Sonnet): write the response, choose the mode, or skip
-5. **Reflection**: per-passage notes + daily digest of patterns and preoccupations
+1. **Sources**: Bluesky timeline, RSS feeds, manual stimuli (browser clipper), file seeds
+2. **Triage** (Haiku): should the bot engage with this stimulus?
+3. **Retrieval**: semantic search with poet cooling (overused poets excluded)
+4. **Composition** (Opus): short-form (300 char) or long-form (2-3 paragraphs)
+5. **Self-generation**: contemplate (single passage), compare (two passages), engage_self (unprompted essay)
+6. **Oblique Strategies**: random structural constraint per composition
+7. **Daily review** (Opus): select 3-5 for publication + 5-10 for notebook, write reflection
+8. **Editorial revision** (Opus): catch voice tics, sharpen prose on selected entries
+9. **Site build**: render to static HTML, push to GitHub Pages
 
 ## Running
 
 ```bash
-# Blog-only mode: poll your timeline, process through brain, log to DB
-./venv/bin/python -m src.bluesky.runner --timeline
+# Unified source runner (reads config/config.yaml for sources)
+./venv/bin/python -m src.runner
 
 # Build site and push to GitHub Pages
 ./venv/bin/python scripts/build_site.py
 
-# Build site locally (no push)
-./venv/bin/python scripts/build_site.py --no-push
-
-# Firehose dry run (keyword-filtered)
-./venv/bin/python -m src.bluesky.runner
-
-# Test UI
-uvicorn src.web:app --port 8080
+# Start the browser clipper drop server
+python3 tools/lucubrator-clipper/drop-server.py --rsync
 ```
 
-Requires `ANTHROPIC_API_KEY` in `.env`. Timeline and live modes also need `BSKY_HANDLE` and `BSKY_PASSWORD`.
+Requires `ANTHROPIC_API_KEY` in `.env`. Timeline mode also needs `BSKY_HANDLE` and `BSKY_PASSWORD`.
+
+## Deployment
+
+Runs on a Raspberry Pi 4 (4GB) with SSD and 8GB swap. systemd service auto-restarts. Daily review at 23:30 UTC, site rebuild at 23:45 UTC.
 
 ## Setup
 
@@ -89,4 +93,4 @@ python3.13 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 ```
 
-Corpus data and ChromaDB embeddings are not in the repo. Run the pipeline scripts to rebuild from sources — see `config/config.yaml` for source configuration.
+Corpus data and ChromaDB embeddings are not in the repo. Run the pipeline scripts to rebuild from sources.

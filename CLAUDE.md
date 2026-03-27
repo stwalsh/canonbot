@@ -35,11 +35,13 @@ rsync -avz -e "ssh -i ~/.ssh/id_pi" /Users/swalsh/Desktop/canonbot/config/stimul
 
 - Config: `config/config.yaml` (sources, engine limits, self-gen modes)
 - Prompts: `config/prompts/` (soul, system, triage, reflect, contemplate, compare, engage, revise)
+- Oblique Strategies: `config/oblique_strategies.md` (88 cards, editable markdown)
 - Runner: `src/runner.py` (unified source runner)
 - Engine: `src/engine.py` (process, self_generate, engage_stimulus, run_daily_reflection)
 - Brain: `src/brain.py` (compose, contemplate, compare, engage, revise_entry, daily_review)
+- Sources: `src/sources/` (bluesky_timeline, rss, feed_file, stimuli_dir, multiplexer, seeds)
 - Site: `scripts/build_site.py` + `scripts/templates/site/`
-- Clipper: `tools/lucubrator-clipper/` (extension + drop server)
+- Clipper: `tools/lucubrator-clipper/` (extension + drop server + macOS launch agent)
 
 ## Commit style
 
