@@ -42,6 +42,9 @@ rsync -avz -e "ssh -i ~/.ssh/id_pi" /Users/swalsh/Desktop/canonbot/config/stimul
 - Sources: `src/sources/` (bluesky_timeline, rss, feed_file, stimuli_dir, multiplexer, seeds)
 - Site: `scripts/build_site.py` + `scripts/templates/site/`
 - Clipper: `tools/lucubrator-clipper/` (extension + drop server + macOS launch agent)
+  - Text clips: Chrome extension → POST /drop (JSON)
+  - Photos: iOS Shortcuts → POST /drop-photo (raw JPEG body, via immram.local:3847)
+  - Oblique Strategies: `config/oblique_strategies.md` (88 cards, one drawn per composition)
 
 ## Commit style
 
