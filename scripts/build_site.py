@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -101,16 +102,25 @@ def build(store: Store) -> Path:
     interactions = [ix for ix in interactions if ix.get("published") != 2]
     reflections = store.get_all_reflections()
 
+    def _clean_stimulus(text: str) -> str:
+        """Strip self-gen bracketed instructions from stimulus text for display."""
+        if not text:
+            return ""
+        # Remove leading [contemplate], [compare], [engage_self] etc.
+        return re.sub(r"^\[(?:contemplate|compare|engage_self)\]\s*", "", text).strip()
+
     # Prepare entries
     entries = []
     for ix in interactions:
+        raw_stim = ix.get("stimulus_text", "") or ""
+        clean_stim = _clean_stimulus(raw_stim)
         entry = {
             "id": ix["id"],
             "slug": _make_slug(ix),
             "date": ix["timestamp"][:10] if ix.get("timestamp") else "undated",
             "timestamp": ix.get("timestamp", ""),
-            "stimulus_text": ix.get("stimulus_text", ""),
-            "stimulus_text_short": (ix.get("stimulus_text", "") or "")[:300],
+            "stimulus_text": clean_stim,
+            "stimulus_text_short": clean_stim[:300],
             "stimulus_uri": ix.get("stimulus_uri", ""),
             "stimulus_author": ix.get("stimulus_author", ""),
             "source": ix.get("source", ""),
