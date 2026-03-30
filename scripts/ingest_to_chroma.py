@@ -86,6 +86,11 @@ def ingest_all(chunks_dir: str, chroma_path: str) -> int:
                     meta["tcp_id"] = chunk["tcp_id"]
                 if chunk.get("speaker"):
                     meta["speaker"] = chunk["speaker"]
+                # Prose/poetry schema (new chunks only — old chunks won't have these)
+                if chunk.get("type"):
+                    meta["type"] = chunk["type"]  # "verse" or "prose"
+                if chunk.get("genre"):
+                    meta["genre"] = chunk["genre"]  # "lyric", "essay", "criticism", etc.
 
                 batch_ids.append(chunk_id)
                 batch_docs.append(chunk_text)

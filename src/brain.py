@@ -51,13 +51,17 @@ def retrieve(
     n_results: int = 5,
     exclude_ids: set[str] | None = None,
     exclude_poets: set[str] | None = None,
+    content_type: str | None = None,
+    max_prose: int | None = None,
 ) -> list[dict]:
     """Stage 2: multi-query semantic search over the corpus.
 
     Returns list of passage dicts.
     """
     return retriever.search_multi(
-        queries, n_results=n_results, exclude_ids=exclude_ids, exclude_poets=exclude_poets,
+        queries, n_results=n_results, exclude_ids=exclude_ids,
+        exclude_poets=exclude_poets, content_type=content_type,
+        max_prose=max_prose,
     )
 
 
