@@ -1,19 +1,36 @@
 #!/usr/bin/env bash
 # Run the Opus daily review. Intended for cron.
-# Selects best entries, writes reflection, stores self_notes.
+# Selects best entries, writes reflection, runs editorial revision.
 set -euo pipefail
 
 cd /home/pi/canonbot
 set -a; source .env; set +a
 
-./venv/bin/python -c "
+echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') — Starting daily review"
+
+./venv/bin/python -u -c "
+import traceback
 from src.engine import Engine
-e = Engine()
-result = e.run_daily_reflection()
-if result:
-    selected = result.get('selected_ids', [])
-    print(f'Daily review: selected {len(selected)} entries')
-else:
-    print('No posts today — skipped')
-e.store.close()
+
+try:
+    e = Engine()
+    result = e.run_daily_reflection()
+    if result:
+        selected = result.get('selected_ids', [])
+        publish = [s for s in selected if s.get('tier') == 'publish']
+        notebook = [s for s in selected if s.get('tier') == 'notebook']
+        print(f'Daily review: selected {len(selected)} entries ({len(publish)} publish, {len(notebook)} notebook)')
+        if result.get('self_notes'):
+            print(f'Self-notes: {result[\"self_notes\"][:100]}...')
+        else:
+            print('WARNING: self_notes is empty')
+    else:
+        print('No posts today — skipped')
+    e.store.close()
+except Exception:
+    print('ERROR in daily review:')
+    traceback.print_exc()
+    raise
 "
+
+echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') — Daily review complete"

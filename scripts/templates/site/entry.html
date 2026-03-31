@@ -5,11 +5,17 @@
     <h2 class="entry-date">{{ entry.date }}</h2>
 
     <section class="triptych">
+        {% if entry.stimulus_author != "self" %}
         <div class="stimulus">
             <h3>Stimulus</h3>
             <blockquote>{{ entry.stimulus_text_short }}{% if entry.stimulus_text|length > 300 %}&hellip;{% endif %}</blockquote>
-            <cite>{{ entry.stimulus_author or "anonymous" }}{% if entry.stimulus_uri %} &middot; <a href="{{ entry.stimulus_uri }}" class="source-link">source</a>{% endif %}</cite>
+            {% if entry.stimulus_author not in ("interlocutor", "stimuli_dir", "feed_file", "anonymous", "") %}
+            <cite>{{ entry.stimulus_author }}{% if entry.stimulus_uri %} &middot; <a href="{{ entry.stimulus_uri }}" class="source-link">source</a>{% endif %}</cite>
+            {% elif entry.stimulus_uri %}
+            <cite><a href="{{ entry.stimulus_uri }}" class="source-link">source</a></cite>
+            {% endif %}
         </div>
+        {% endif %}
 
         {% if entry.posts %}
         <div class="bot-post">
