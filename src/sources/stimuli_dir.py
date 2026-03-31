@@ -43,11 +43,17 @@ class StimuliDirSource(Source):
                 for f in sorted(self.path.glob("*.md")) + sorted(self.path.glob("*.txt")):
                     if f.name.startswith("."):
                         continue
-                    mtime = f.stat().st_mtime
+                    try:
+                        mtime = f.stat().st_mtime
+                    except FileNotFoundError:
+                        continue
                     if f.name not in self._known or mtime > self._known[f.name]:
                         self._known[f.name] = mtime
                         changed = True
-                        text = f.read_text(encoding="utf-8")
+                        try:
+                            text = f.read_text(encoding="utf-8")
+                        except (FileNotFoundError, PermissionError):
+                            continue
                         if text.strip():
                             yield SourceItem(
                                 text=text,

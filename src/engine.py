@@ -65,7 +65,8 @@ def _load_engine_config() -> dict:
         with open("config/config.yaml") as f:
             cfg = yaml.safe_load(f)
         return {**_DEFAULT_CONFIG, **(cfg.get("engine") or {})}
-    except FileNotFoundError:
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        log.warning("Config load failed (%s), using defaults", e)
         return _DEFAULT_CONFIG
 
 
@@ -666,19 +667,29 @@ class Engine:
             except Exception:
                 log.exception("Revision failed for entry %d (non-fatal)", entry_id)
 
+        # Validate critical fields before storing
+        summary = result.get("summary", "")
+        self_notes = result.get("self_notes")
+        if not summary or len(summary) < 50:
+            log.warning("Daily review produced short/empty summary (%d chars). Possible truncation.", len(summary or ""))
+        if not self_notes:
+            log.warning("Daily review produced empty self_notes. Composition will lack direction tomorrow.")
+            self_notes = None  # store as NULL rather than empty string
+
         # Store reflection
         self.store.log_reflection(
             period="daily",
-            summary=result.get("summary", ""),
+            summary=summary,
             poets_used=poet_usage,
             themes_used=theme_usage,
             preoccupations=result.get("preoccupations"),
             recommendations=result.get("recommendations"),
-            self_notes=result.get("self_notes"),
+            self_notes=self_notes,
         )
 
         log.info(
-            "Daily review stored. Published: %d, Notebook: %d, Total: %d. Preoccupations: %s",
-            len(publish_ids), len(notebook_ids), len(interactions), result.get("preoccupations"),
+            "Daily review stored. Published: %d, Notebook: %d, Total: %d. Summary: %d chars. Self_notes: %s",
+            len(publish_ids), len(notebook_ids), len(interactions),
+            len(summary), "yes" if self_notes else "EMPTY",
         )
         return result

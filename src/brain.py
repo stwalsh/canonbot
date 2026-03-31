@@ -1,6 +1,7 @@
 """Three-stage brain: triage → retrieval → composition."""
 
 import json
+import logging
 from pathlib import Path
 
 import anthropic
@@ -8,14 +9,36 @@ import anthropic
 from src import retriever
 from src import safety
 
+log = logging.getLogger(__name__)
+
 PROMPTS_DIR = Path(__file__).resolve().parent.parent / "config" / "prompts"
 
 TRIAGE_MODEL = "claude-haiku-4-5-20251001"
 COMPOSITION_MODEL = "claude-opus-4-6"
 
+_EMPTY_USAGE = {"input_tokens": 0, "output_tokens": 0}
+
 
 def _load_prompt(name: str) -> str:
     return (PROMPTS_DIR / name).read_text().strip()
+
+
+def _safe_api_call(client, caller_name: str, **kwargs) -> tuple:
+    """Wrap client.messages.create() with error handling.
+
+    Returns (response, usage) on success, raises on unrecoverable error.
+    Catches transient API errors and returns None.
+    """
+    try:
+        response = client.messages.create(**kwargs)
+        usage = {
+            "input_tokens": response.usage.input_tokens,
+            "output_tokens": response.usage.output_tokens,
+        }
+        return response, usage
+    except (anthropic.APIError, anthropic.APIConnectionError) as e:
+        log.error("API error in %s: %s", caller_name, e)
+        return None, _EMPTY_USAGE
 
 
 def triage(client: anthropic.Anthropic, stimulus: str) -> dict:
@@ -25,12 +48,15 @@ def triage(client: anthropic.Anthropic, stimulus: str) -> dict:
     {"search_queries": [...], "the_problem": "..."}.
     """
     system = _load_prompt("triage.md")
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "triage",
         model=TRIAGE_MODEL,
         max_tokens=512,
         system=system,
         messages=[{"role": "user", "content": stimulus}],
     )
+    if response is None:
+        return {"engage": False, "reason": "API error during triage", "_usage": usage}
     text = response.content[0].text.strip()
     # Strip markdown fences if the model wraps its response
     if text.startswith("```"):
@@ -39,10 +65,7 @@ def triage(client: anthropic.Anthropic, stimulus: str) -> dict:
         result = json.loads(text)
     except json.JSONDecodeError:
         result = {"engage": False, "reason": f"Triage returned unparseable response: {text[:100]}"}
-    result["_usage"] = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    result["_usage"] = usage
     return result
 
 

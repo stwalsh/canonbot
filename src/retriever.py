@@ -13,12 +13,16 @@ _collection = None
 def _get_collection():
     global _client, _collection
     if _collection is None:
-        _client = chromadb.PersistentClient(path=CHROMA_PATH)
-        ef = embedding_functions.ONNXMiniLM_L6_V2()
-        _collection = _client.get_collection(
-            name=COLLECTION_NAME,
-            embedding_function=ef,
-        )
+        try:
+            _client = chromadb.PersistentClient(path=CHROMA_PATH)
+            ef = embedding_functions.ONNXMiniLM_L6_V2()
+            _collection = _client.get_collection(
+                name=COLLECTION_NAME,
+                embedding_function=ef,
+            )
+        except Exception as e:
+            print(f"  [retriever] ERROR: ChromaDB unavailable: {e}")
+            raise
     return _collection
 
 
