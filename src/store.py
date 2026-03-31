@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS readings (
     themes TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_readings_chunk ON readings(chunk_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_timestamp ON interactions(timestamp);
+CREATE INDEX IF NOT EXISTS idx_interactions_decision ON interactions(composition_decision);
+CREATE INDEX IF NOT EXISTS idx_interactions_published ON interactions(published);
 
 CREATE TABLE IF NOT EXISTS reflections (
     id INTEGER PRIMARY KEY,

@@ -216,7 +216,8 @@ def compose(
         if context_parts:
             user_msg += "\n\n" + "\n\n".join(context_parts)
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "compose",
         model=COMPOSITION_MODEL,
         max_tokens=1024,
         system=system,
@@ -224,11 +225,9 @@ def compose(
         tools=[_COMPOSE_TOOL],
         tool_choice={"type": "tool", "name": "compose_response"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"decision": "skip", "mode": "thought_only", "posts": [],
+                "skip_reason": "API error during composition", "_usage": usage}
 
     # Extract the tool call input
     for block in response.content:
@@ -269,7 +268,8 @@ def compose(
             return result
 
     # Fallback — shouldn't happen with tool_choice forced
-    return {"decision": "skip", "mode": "thought_only", "posts": [], "skip_reason": "No tool call in response."}
+    return {"decision": "skip", "mode": "thought_only", "posts": [],
+            "skip_reason": "No tool call in response.", "_usage": usage}
 
 
 REFLECT_MODEL = TRIAGE_MODEL  # Haiku — cheap per-interaction reflection
@@ -320,18 +320,16 @@ def reflect(
         post_text=post_text,
     )
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "reflect",
         model=REFLECT_MODEL,
         max_tokens=512,
         messages=[{"role": "user", "content": user_msg}],
         tools=[_REFLECT_TOOL],
         tool_choice={"type": "tool", "name": "log_reflection"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"collision_note": "", "themes": [], "updated_note": existing_note or "", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -475,7 +473,8 @@ def daily_review(
 
     soul = _load_prompt("soul.md")
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "daily_review",
         model=DAILY_REVIEW_MODEL,
         max_tokens=4096,
         system=soul,
@@ -483,11 +482,9 @@ def daily_review(
         tools=[_DAILY_REVIEW_TOOL],
         tool_choice={"type": "tool", "name": "daily_review"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"selected_ids": [], "summary": "", "preoccupations": [],
+                "recommendations": [], "self_notes": "", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -542,19 +539,17 @@ def revise_entry(
         passage_context=passage_context,
     )
 
-    response = client.messages.create(
-        model=DAILY_REVIEW_MODEL,  # Opus for editorial quality
+    response, usage = _safe_api_call(
+        client, "revise_entry",
+        model=DAILY_REVIEW_MODEL,
         max_tokens=2048,
         system=soul,
         messages=[{"role": "user", "content": user_msg}],
         tools=[_REVISE_TOOL],
         tool_choice={"type": "tool", "name": "revise_entry"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"revised_posts": [], "changes_made": "API error", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -597,11 +592,14 @@ def _generate_search_direction(
         + "\n\nRespond with JSON: {\"query\": \"...\", \"reason\": \"...\"}"
     )
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "search_direction",
         model=TRIAGE_MODEL,
         max_tokens=256,
         messages=[{"role": "user", "content": user_msg}],
     )
+    if response is None:
+        return {"query": "", "reason": "API error during search direction", "_usage": usage}
     text = response.content[0].text.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
@@ -609,10 +607,7 @@ def _generate_search_direction(
         result = json.loads(text)
     except json.JSONDecodeError:
         result = {"query": text[:200], "reason": "Unparseable response, using as raw query."}
-    result["_usage"] = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    result["_usage"] = usage
     return result
 
 
@@ -695,7 +690,8 @@ def engage(
         if parts:
             user_msg += "\n\n" + "\n\n".join(parts)
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "engage",
         model=COMPOSITION_MODEL,
         max_tokens=2048,
         system=soul,
@@ -703,11 +699,9 @@ def engage(
         tools=[_ENGAGE_TOOL],
         tool_choice={"type": "tool", "name": "engage_response"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"decision": "skip", "mode": "engage", "posts": [], "paragraphs": [],
+                "skip_reason": "API error during engage", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -772,7 +766,8 @@ def contemplate(
     )
     user_msg = _inject_self_gen_context(user_msg, reflection_context)
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "contemplate",
         model=COMPOSITION_MODEL,
         max_tokens=1024,
         system=soul,
@@ -780,11 +775,9 @@ def contemplate(
         tools=[_COMPOSE_TOOL],
         tool_choice={"type": "tool", "name": "compose_response"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"decision": "skip", "mode": "thought_only", "posts": [],
+                "skip_reason": "API error during contemplate", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -837,7 +830,8 @@ def compare(
     )
     user_msg = _inject_self_gen_context(user_msg, reflection_context)
 
-    response = client.messages.create(
+    response, usage = _safe_api_call(
+        client, "compare",
         model=COMPOSITION_MODEL,
         max_tokens=1024,
         system=soul,
@@ -845,11 +839,9 @@ def compare(
         tools=[_COMPOSE_TOOL],
         tool_choice={"type": "tool", "name": "compose_response"},
     )
-
-    usage = {
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
-    }
+    if response is None:
+        return {"decision": "skip", "mode": "thought_only", "posts": [],
+                "skip_reason": "API error during compare", "_usage": usage}
 
     for block in response.content:
         if block.type == "tool_use":
@@ -871,58 +863,6 @@ def compare(
     return {"decision": "skip", "mode": "thought_only", "posts": [], "skip_reason": "No tool call.", "_usage": usage}
 
 
-def run(
-    client: anthropic.Anthropic,
-    stimulus: str,
-    exclude_ids: set[str] | None = None,
-    reflection_context: dict | None = None,
-) -> dict:
-    """Run the full triage → retrieval → composition pipeline.
-
-    reflection_context is passed through to compose() for preference injection.
-
-    Returns:
-        {
-            "stimulus": str,
-            "triage": {"engage": bool, "reason": str, "search_queries": [...], "the_problem": "..."},
-            "passages": [...] or None,
-            "composition": {...} or None,
-        }
-    """
-    result = {"stimulus": stimulus, "triage": None, "passages": None, "composition": None,
-              "tokens_in": 0, "tokens_out": 0}
-
-    # Stage 1
-    result["triage"] = triage(client, stimulus)
-    triage_usage = result["triage"].pop("_usage", {})
-    result["tokens_in"] += triage_usage.get("input_tokens", 0)
-    result["tokens_out"] += triage_usage.get("output_tokens", 0)
-
-    if not result["triage"].get("engage"):
-        return result
-
-    # Stage 2: use triage's search queries instead of raw stimulus
-    search_queries = result["triage"].get("search_queries", [stimulus])
-    raw_passages = retrieve(search_queries, exclude_ids=exclude_ids)
-    result["passages"] = safety.filter_passages(raw_passages)
-
-    if not result["passages"]:
-        result["composition"] = {
-            "decision": "skip",
-            "mode": "thought_only",
-            "posts": [],
-            "skip_reason": "All retrieved passages filtered by safety check.",
-        }
-        return result
-
-    # Stage 3: pass the_problem and reflection context to composition
-    the_problem = result["triage"].get("the_problem", "")
-    result["composition"] = compose(
-        client, stimulus, result["passages"], the_problem,
-        reflection_context=reflection_context,
-    )
-    comp_usage = result["composition"].pop("_usage", {})
-    result["tokens_in"] += comp_usage.get("input_tokens", 0)
-    result["tokens_out"] += comp_usage.get("output_tokens", 0)
-
-    return result
+    # brain.run() was here — removed as dead code.
+    # Engine.process() in engine.py handles the full pipeline with
+    # rate limiting, anti-repetition, reflection context, and logging.

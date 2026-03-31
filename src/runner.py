@@ -233,8 +233,10 @@ async def run(live: bool = False):
                             await asyncio.sleep(65)
                     except asyncio.TimeoutError:
                         print("  [self] TIMEOUT on self-generation")
+                        last_composition_time = time.time()  # prevent hammering
                     except Exception as e:
                         print(f"  [self] ERROR: {e}")
+                        last_composition_time = time.time()  # prevent hammering
             continue
 
         # Seed item: accumulate, and engage if from stimuli_dir
