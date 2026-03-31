@@ -90,13 +90,14 @@ class RSSSource(Source):
 
             # Persist cursor — cap at 500 most recent IDs
             if len(seen_ids) > 500:
-                # Keep the IDs we just saw plus overflow from previous
-                recent = {entry.get("id") or entry.get("link") or entry.get("title", "")
-                          for entry in feed.entries}
-                seen_ids = recent | (seen_ids - recent)
-                # If still over 500, just keep 500 (some old ones lost, but they won't re-appear)
-                if len(seen_ids) > 500:
-                    seen_ids = set(list(seen_ids)[:500])
+                # Keep the IDs we just saw (most recent) plus as many old ones as fit
+                recent = [entry.get("id") or entry.get("link") or entry.get("title", "")
+                          for entry in feed.entries]
+                recent_set = set(recent)
+                old = [sid for sid in seen_ids if sid not in recent_set]
+                # Recent first, then old — trim from the old end
+                ordered = recent + old
+                seen_ids = set(ordered[:500])
             self._save_cursor(json.dumps(list(seen_ids)))
 
             yield None  # end-of-cycle

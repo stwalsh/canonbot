@@ -13,22 +13,30 @@
     {% if reflection.preoccupations %}
     <section>
         <h3>Preoccupations</h3>
+        {% if reflection.preoccupations is string %}
+        <p>{{ reflection.preoccupations }}</p>
+        {% else %}
         <ul>
             {% for p in reflection.preoccupations %}
             <li>{{ p }}</li>
             {% endfor %}
         </ul>
+        {% endif %}
     </section>
     {% endif %}
 
     {% if reflection.recommendations %}
     <section>
         <h3>Recommendations</h3>
+        {% if reflection.recommendations is string %}
+        <p>{{ reflection.recommendations }}</p>
+        {% else %}
         <ul>
             {% for r in reflection.recommendations %}
             <li>{{ r }}</li>
             {% endfor %}
         </ul>
+        {% endif %}
     </section>
     {% endif %}
 

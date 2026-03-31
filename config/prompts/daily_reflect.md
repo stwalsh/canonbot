@@ -2,7 +2,7 @@ You are reviewing your own day's work. The posts below are yours — you compose
 
 Today I posted {n_posts} responses. Four tasks:
 
-1. **SELECT FOR PUBLICATION** — choose 3-5 long-form entries (engage mode, self-generated essays) for full publication. These will be editorially revised before publishing. A published entry should:
+1. **SELECT FOR PUBLICATION** — choose up to 8 entries (engage mode, self-generated essays, strong short-form) for full publication. These will be editorially revised before publishing. Be generous — interesting work that takes risks should be published even if imperfect. A published entry should:
    - Make a real critical observation (not just "this poem is about X")
    - Create a collision between the source material and the corpus that produces a third meaning
    - Use passages that earn their place (not the obvious choice)

@@ -79,13 +79,17 @@ def retrieve(
 ) -> list[dict]:
     """Stage 2: multi-query semantic search over the corpus.
 
-    Returns list of passage dicts.
+    Returns list of passage dicts, or [] if ChromaDB is unavailable.
     """
-    return retriever.search_multi(
-        queries, n_results=n_results, exclude_ids=exclude_ids,
-        exclude_poets=exclude_poets, content_type=content_type,
-        max_prose=max_prose,
-    )
+    try:
+        return retriever.search_multi(
+            queries, n_results=n_results, exclude_ids=exclude_ids,
+            exclude_poets=exclude_poets, content_type=content_type,
+            max_prose=max_prose,
+        )
+    except Exception as e:
+        log.error("Retrieval failed (ChromaDB unavailable?): %s", e)
+        return []
 
 
 # Tool schema for structured composition output
@@ -264,6 +268,14 @@ def compose(
             pu = result.get("passage_used")
             if isinstance(pu, str):
                 result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            elif isinstance(pu, dict):
+                pu.setdefault("chunk_id", "")
+                pu.setdefault("poet", "")
+                pu.setdefault("poem_title", "")
+            # Ensure required fields
+            result.setdefault("decision", "skip")
+            result.setdefault("posts", [])
+            result.setdefault("mode", "thought_only")
             result["_usage"] = usage
             return result
 
@@ -334,6 +346,9 @@ def reflect(
     for block in response.content:
         if block.type == "tool_use":
             result = block.input
+            result.setdefault("collision_note", "")
+            result.setdefault("themes", [])
+            result.setdefault("updated_note", existing_note or "")
             result["_usage"] = usage
             return result
 
@@ -489,6 +504,11 @@ def daily_review(
     for block in response.content:
         if block.type == "tool_use":
             result = block.input
+            result.setdefault("selected_ids", [])
+            result.setdefault("summary", "")
+            result.setdefault("preoccupations", [])
+            result.setdefault("recommendations", [])
+            result.setdefault("self_notes", "")
             result["_usage"] = usage
             return result
 
@@ -554,6 +574,8 @@ def revise_entry(
     for block in response.content:
         if block.type == "tool_use":
             result = block.input
+            result.setdefault("revised_posts", [])
+            result.setdefault("changes_made", "")
             result["_usage"] = usage
             return result
 
@@ -717,6 +739,13 @@ def engage(
             pu = result.get("passage_used")
             if isinstance(pu, str):
                 result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            elif isinstance(pu, dict):
+                pu.setdefault("chunk_id", "")
+                pu.setdefault("poet", "")
+                pu.setdefault("poem_title", "")
+            result.setdefault("decision", "skip")
+            result.setdefault("posts", [])
+            result.setdefault("paragraphs", [])
             result["_usage"] = usage
             return result
 
@@ -793,6 +822,12 @@ def contemplate(
             pu = result.get("passage_used")
             if isinstance(pu, str):
                 result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            elif isinstance(pu, dict):
+                pu.setdefault("chunk_id", "")
+                pu.setdefault("poet", "")
+                pu.setdefault("poem_title", "")
+            result.setdefault("decision", "skip")
+            result.setdefault("mode", "thought_only")
             result["_usage"] = usage
             return result
 
@@ -857,6 +892,12 @@ def compare(
             pu = result.get("passage_used")
             if isinstance(pu, str):
                 result["passage_used"] = {"chunk_id": "", "poet": "", "poem_title": pu}
+            elif isinstance(pu, dict):
+                pu.setdefault("chunk_id", "")
+                pu.setdefault("poet", "")
+                pu.setdefault("poem_title", "")
+            result.setdefault("decision", "skip")
+            result.setdefault("mode", "thought_only")
             result["_usage"] = usage
             return result
 
