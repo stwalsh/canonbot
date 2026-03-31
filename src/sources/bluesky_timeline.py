@@ -31,11 +31,15 @@ class BlueskyTimelineSource(Source):
         old_cursor = Path("data/timeline_cursor.txt")
         if old_cursor.exists() and not self._cursor_path().exists():
             self._save_cursor(old_cursor.read_text().strip())
+            old_cursor.unlink()
+            print("  [timeline] Migrated cursor from old location")
 
         cursor = self._load_cursor()
         print(f"  [timeline] Polling every {self.poll_interval}s")
         if cursor:
             print(f"  [timeline] Resuming from cursor: {cursor[:20]}...")
+
+        empty_cycles = 0
 
         while True:
             try:
@@ -56,12 +60,21 @@ class BlueskyTimelineSource(Source):
             new_cursor = result.get("cursor")
 
             if not feed:
-                if new_cursor:
+                empty_cycles += 1
+                if empty_cycles >= 3 and cursor:
+                    # Stale cursor — 3 empty polls in a row, reset
+                    print(f"  [timeline] Stale cursor detected ({empty_cycles} empty cycles), resetting")
+                    cursor = None
+                    self._save_cursor("")
+                    empty_cycles = 0
+                elif new_cursor:
                     cursor = new_cursor
                     self._save_cursor(cursor)
                 yield None  # end-of-cycle
                 await asyncio.sleep(self.poll_interval)
                 continue
+
+            empty_cycles = 0  # reset on successful feed
 
             for post in reversed(feed):
                 text = post.get("text", "")

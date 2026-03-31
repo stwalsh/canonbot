@@ -327,13 +327,23 @@ class Engine:
                     if p.get("chunk_id") == pu["chunk_id"]:
                         matched = p
                         break
-            # Fall back to poet+title match
+            # Fall back to poet+title match, then poet-only
             if not matched and pu.get("poet"):
                 poet_lower = pu["poet"].lower()
-                for p in result["passages"]:
-                    if p.get("poet", "").lower() == poet_lower:
-                        matched = p
-                        break
+                title_lower = (pu.get("poem_title") or "").lower()
+                # Try poet+title first
+                if title_lower:
+                    for p in result["passages"]:
+                        if (p.get("poet", "").lower() == poet_lower and
+                                p.get("poem_title", "").lower() == title_lower):
+                            matched = p
+                            break
+                # Then poet-only
+                if not matched:
+                    for p in result["passages"]:
+                        if p.get("poet", "").lower() == poet_lower:
+                            matched = p
+                            break
             if matched:
                 pu["text"] = matched.get("text", "")
                 pu["chunk_id"] = matched.get("chunk_id", pu.get("chunk_id", ""))

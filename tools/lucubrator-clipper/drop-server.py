@@ -144,7 +144,7 @@ def _process_image(image_data: bytes, content_type: str, caption: str = "") -> s
 
     b64 = base64.standard_b64encode(image_data).decode("utf-8")
 
-    client = anthropic.Anthropic()
+    client = anthropic.Anthropic(timeout=60.0)
 
     # Ask Claude to figure out what the image is and respond appropriately
     prompt = (
