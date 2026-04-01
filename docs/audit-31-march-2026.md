@@ -23,6 +23,18 @@
 16. **Duplicate line in store.py:160-161** — copy-paste error
 17. **DB indexes missing** — interactions table has no indexes, will slow on Pi
 
+## Ongoing: Daily review tool response is the most unreliable data path
+
+The `daily_review` tool schema specifies `selected_ids` as `[{id: int, tier: str, reason: str}]`, but Opus has returned:
+- Flat list of strings (`["1318", "1320"]`) — caused March 31 crash
+- Flat list of ints (`[1318, 1320]`)
+- Dicts without tier field (backward compat fallback handles this)
+- Empty/truncated self_notes (max_tokens fix helped but not 100%)
+- Preoccupations as a single string instead of a list (caused character-by-character bullet rendering)
+- Summary truncated to 0 chars on partial failure (March 30)
+
+**Every field returned by the daily review tool must be defensively normalized.** The tool schema is a suggestion to Opus, not a contract. New failure modes will continue to appear. The normalization code in `engine.py:run_daily_reflection()` is the most important defensive code in the system.
+
 ## Medium (noted)
 
 - Hardcoded values scattered (stimulus dedup cap, theme hours, fallback themes)
