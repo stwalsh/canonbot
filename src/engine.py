@@ -639,6 +639,18 @@ class Engine:
         valid_ids = {ix["id"] for ix in interactions}
         ix_by_id = {ix["id"]: ix for ix in interactions}
 
+        # Normalize selected_ids — Opus sometimes returns strings, ints, or dicts
+        normalized = []
+        for s in selected:
+            if isinstance(s, dict):
+                normalized.append(s)
+            elif isinstance(s, (int, str)):
+                try:
+                    normalized.append({"id": int(s), "tier": "publish", "reason": ""})
+                except (ValueError, TypeError):
+                    pass
+        selected = normalized
+
         publish_ids = [s["id"] for s in selected if s.get("tier") == "publish" and s.get("id") in valid_ids]
         notebook_ids = [s["id"] for s in selected if s.get("tier") == "notebook" and s.get("id") in valid_ids]
 
