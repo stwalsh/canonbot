@@ -17,9 +17,10 @@ try:
     result = e.run_daily_reflection()
     if result:
         selected = result.get('selected_ids', [])
-        publish = [s for s in selected if s.get('tier') == 'publish']
-        notebook = [s for s in selected if s.get('tier') == 'notebook']
-        print(f'Daily review: selected {len(selected)} entries ({len(publish)} publish, {len(notebook)} notebook)')
+        publish = [s for s in selected if isinstance(s, dict) and s.get('tier') == 'publish']
+        notebook = [s for s in selected if isinstance(s, dict) and s.get('tier') == 'notebook']
+        non_dict = sum(1 for s in selected if not isinstance(s, dict))
+        print(f'Daily review: selected {len(selected)} entries ({len(publish)} publish, {len(notebook)} notebook, {non_dict} non-dict)')
         if result.get('self_notes'):
             print(f'Self-notes: {result[\"self_notes\"][:100]}...')
         else:
