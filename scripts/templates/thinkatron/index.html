@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="toc">
+  <ol class="entries">
+  {% for entry in entries %}
+    <li>
+      <a href="entries/{{ entry.slug }}.html">
+        <span class="entry-lede">{{ entry.lede }}</span>
+        <span class="entry-meta">{{ entry.date }}{% if entry.passage_used %} &middot; {{ entry.passage_used.poet }}{% endif %}</span>
+      </a>
+    </li>
+  {% endfor %}
+  </ol>
+</section>
+{% endblock %}

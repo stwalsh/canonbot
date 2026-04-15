@@ -100,6 +100,11 @@ class Store:
             self._conn.execute("ALTER TABLE interactions ADD COLUMN edited_posts TEXT")
             self._conn.commit()
 
+        if "featured" not in ix_cols:
+            self._conn.execute("ALTER TABLE interactions ADD COLUMN featured INTEGER DEFAULT 0")
+            self._conn.execute("CREATE INDEX IF NOT EXISTS idx_interactions_featured ON interactions(featured)")
+            self._conn.commit()
+
         cursor = self._conn.execute("PRAGMA table_info(reflections)")
         ref_cols = {row[1] for row in cursor.fetchall()}
         if "self_notes" not in ref_cols:

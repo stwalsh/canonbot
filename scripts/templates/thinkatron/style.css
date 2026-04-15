@@ -1,0 +1,119 @@
+/* thinkatron.review — minimal literary-journal stub. Replace when design lands. */
+:root {
+  --ink: #1a1a1a;
+  --paper: #fafaf7;
+  --rule: #d8d4c7;
+  --accent: #8a2a2a;
+  --serif: "Iowan Old Style", "Palatino", Georgia, serif;
+  --sans: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+}
+
+html { font-size: 18px; }
+body {
+  margin: 0;
+  font-family: var(--serif);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.55;
+}
+
+main { max-width: 38rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+.masthead {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--rule);
+}
+.wordmark {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.wordmark .tld { color: var(--accent); font-weight: 400; }
+nav a { font-family: var(--sans); font-size: 0.85rem; color: var(--ink); text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+
+footer {
+  max-width: 38rem;
+  margin: 4rem auto 2rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: #666;
+}
+footer a { color: #666; }
+
+/* Index */
+.entries { list-style: none; padding: 0; margin: 0; }
+.entries li { border-bottom: 1px solid var(--rule); }
+.entries a {
+  display: block;
+  padding: 1.25rem 0;
+  text-decoration: none;
+  color: var(--ink);
+}
+.entry-lede { display: block; font-size: 1.05rem; }
+.entry-meta {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: #666;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.entries a:hover .entry-lede { color: var(--accent); }
+
+/* Entry page */
+.entry-header time {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: #666;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.passage {
+  margin: 2rem 0;
+  padding: 0 0 0 1rem;
+  border-left: 2px solid var(--accent);
+}
+.passage pre {
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.passage cite {
+  display: block;
+  margin-top: 0.75rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  color: #666;
+  font-style: normal;
+}
+.prose p {
+  font-size: 1.05rem;
+  margin: 1rem 0;
+}
+.prose p:first-of-type::first-letter {
+  font-size: 3.2rem;
+  float: left;
+  line-height: 0.9;
+  padding: 0.25rem 0.5rem 0 0;
+  font-weight: 600;
+}
+
+/* About */
+.about h1 {
+  font-size: 1.4rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.5rem;
+}

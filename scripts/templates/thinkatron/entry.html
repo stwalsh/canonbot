@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.lede[:60] }} — thinkatron.review{% endblock %}
+{% block content %}
+<article class="entry">
+  <header class="entry-header">
+    <time>{{ entry.date }}</time>
+  </header>
+
+  {% if entry.passage_used and entry.passage_used.text %}
+  <blockquote class="passage">
+    <pre>{{ entry.passage_used.text }}</pre>
+    <cite>
+      {{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}
+    </cite>
+  </blockquote>
+  {% endif %}
+
+  <div class="prose">
+    {% for post in entry.posts %}
+    <p>{{ post }}</p>
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}
