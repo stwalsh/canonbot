@@ -26,7 +26,39 @@ from src.store import Store
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates" / "thinkatron"
 BUILD_DIR = Path(__file__).resolve().parent.parent / "data" / "thinkatron_build"
+OVERRIDES_PATH = Path(__file__).resolve().parent.parent / "config" / "thinkatron_overrides.json"
 REPO_URL = "git@github.com:stwalsh/thinkatron.git"
+
+
+def _load_overrides_raw() -> dict:
+    if not OVERRIDES_PATH.exists():
+        return {}
+    try:
+        return json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"  WARNING: could not parse {OVERRIDES_PATH}: {e}")
+        return {}
+
+
+def _load_overrides() -> dict:
+    data = _load_overrides_raw()
+    return {k: v for k, v in data.items() if not k.startswith("_") and isinstance(v, dict)}
+
+
+def _load_groups() -> dict:
+    data = _load_overrides_raw()
+    groups = data.get("_groups", {})
+    return groups if isinstance(groups, dict) else {}
+
+
+def _roman(n: int) -> str:
+    numerals = [("X", 10), ("IX", 9), ("V", 5), ("IV", 4), ("I", 1)]
+    out = ""
+    for sym, val in numerals:
+        while n >= val:
+            out += sym
+            n -= val
+    return out
 
 
 def _slug(ix: dict) -> str:
@@ -80,18 +112,86 @@ def build(store: Store) -> Path:
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
 
     rows = _fetch_featured(store)
-    entries = []
+    overrides = _load_overrides()
+    groups = _load_groups()
+
+    # Map interaction id (as str) -> (group_id, part_index in reading order).
+    id_to_group = {}
+    for gid, g in groups.items():
+        for idx, pid in enumerate(g.get("ids", [])):
+            id_to_group[str(pid)] = (gid, idx)
+
+    # Bucket rows into solo entries and group parts.
+    solo_rows = []
+    group_rows: dict[str, list[tuple[int, dict]]] = {}
     for ix in rows:
+        ikey = str(ix["id"])
+        if ikey in id_to_group:
+            gid, part_idx = id_to_group[ikey]
+            group_rows.setdefault(gid, []).append((part_idx, ix))
+        else:
+            solo_rows.append(ix)
+
+    def _part(ix: dict, roman: str | None) -> dict:
         posts = ix.get("edited_posts") or ix.get("posts") or []
-        first = posts[0] if posts else _clean_stim(ix.get("stimulus_text", ""))
+        return {
+            "roman": roman,
+            "passage_used": _passage(ix),
+            "posts": posts,
+        }
+
+    def _lede(parts: list[dict]) -> str:
+        for p in parts:
+            if p["posts"]:
+                first = p["posts"][0]
+                return first[:140] + ("…" if len(first) > 140 else "")
+        return ""
+
+    entries = []
+
+    for ix in solo_rows:
+        ov = overrides.get(str(ix["id"]), {})
+        tags = ov.get("author_tags") or []
+        if isinstance(tags, str):
+            tags = [tags]
+        parts = [_part(ix, None)]
         entries.append({
             "id": ix["id"],
             "slug": _slug(ix),
             "date": ix["timestamp"][:10] if ix.get("timestamp") else "undated",
-            "lede": first[:140] + ("…" if len(first) > 140 else ""),
-            "posts": posts,
-            "passage_used": _passage(ix),
+            "head": ov.get("head") or None,
+            "stand": ov.get("stand") or None,
+            "author_tags": tags,
+            "lede": _lede(parts),
+            "parts": parts,
         })
+
+    for gid, raw_parts in group_rows.items():
+        raw_parts.sort(key=lambda t: t[0])
+        g = groups[gid]
+        parts = [_part(ix, _roman(i + 1)) for i, (_, ix) in enumerate(raw_parts)]
+        tags = g.get("author_tags") or []
+        if isinstance(tags, str):
+            tags = [tags]
+        latest_ts = max((ix.get("timestamp", "") for _, ix in raw_parts), default="")
+        entries.append({
+            "id": gid,
+            "slug": gid,
+            "date": latest_ts[:10] if latest_ts else "undated",
+            "head": g.get("head") or None,
+            "stand": g.get("stand") or None,
+            "author_tags": tags,
+            "lede": _lede(parts),
+            "parts": parts,
+        })
+
+    entries.sort(key=lambda e: e["date"], reverse=True)
+
+    # Previous (older) / Next (newer) — entries are reverse-chronological,
+    # so older = higher index, newer = lower index.
+    for i, e in enumerate(entries):
+        e["prev_slug"] = entries[i + 1]["slug"] if i + 1 < len(entries) else None
+        e["next_slug"] = entries[i - 1]["slug"] if i > 0 else None
 
     if BUILD_DIR.exists():
         shutil.rmtree(BUILD_DIR)
@@ -106,6 +206,10 @@ def build(store: Store) -> Path:
     )
     (BUILD_DIR / "about.html").write_text(
         env.get_template("about.html").render(root=""),
+        encoding="utf-8",
+    )
+    (BUILD_DIR / "colophon.html").write_text(
+        env.get_template("colophon.html").render(root=""),
         encoding="utf-8",
     )
 
@@ -131,7 +235,7 @@ def push(build_dir: Path):
         subprocess.run(["git", "clone", REPO_URL, str(repo_dir)], check=True)
 
     # Preserve these files in the repo root; overwrite everything else.
-    preserve = {".git", "netlify.toml", ".gitignore", "README.md"}
+    preserve = {".git", "netlify.toml", ".gitignore", "README.md", "CLAUDE.md"}
     for item in repo_dir.iterdir():
         if item.name in preserve:
             continue

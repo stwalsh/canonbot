@@ -1,0 +1,26 @@
+{
+  "_README": "Editorial overrides for thinkatron.review. Keyed by interaction id (as string). Any field omitted falls back to the template placeholder. Fields: head (headline), stand (standfirst/dek), author_tags (array of author names shown in meta row). Grouped pieces go under _groups (see below) and are rendered as a single composite entry with Roman-numeral parts.",
+
+  "_groups_README": "Each group renders as ONE entry on the site — a composite piece with Roman-numeral subsections. Keyed by a short group id (used as the URL slug: /entries/<id>.html). `ids` is the list of interaction ids in intended reading order (I, II, III…). Individual per-id overrides are ignored for ids inside a group; only group-level head/stand/author_tags apply. The composite entry's date = most recent part's timestamp.",
+
+  "_groups": {
+    "temple": {
+      "ids": ["1167", "1173"],
+      "head": "Lorem ipsum — temple and performance",
+      "stand": "Lorem ipsum dolor sit amet — a diptych on poems designed to outlast their speakers.",
+      "author_tags": ["Marvell", "Fitzgeffrey"]
+    },
+    "ballads": {
+      "ids": ["2762", "3720", "4566"],
+      "head": "Lorem ipsum — ego and the ballads",
+      "stand": "Lorem ipsum dolor sit amet — a three-part sequence on complaint, voice, and formal survival.",
+      "author_tags": ["Clare", "Traditional Medieval Ballads", "Dryden"]
+    }
+  },
+
+  "11824": {
+    "head": "Sleve McDichael and the retrieval of poetry",
+    "stand": "A Japanese video game's fake baseball names become a test of what a poetry corpus can honestly return.",
+    "author_tags": ["Rochester", "Skelton"]
+  }
+}

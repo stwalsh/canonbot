@@ -1,24 +1,45 @@
 {% extends "base.html" %}
-{% block title %}{{ entry.lede[:60] }} — thinkatron.review{% endblock %}
+{% block title %}{{ entry.head or (entry.lede[:60] + "…") }} — The Thinkatron Review{% endblock %}
 {% block content %}
 <article class="entry">
   <header class="entry-header">
-    <time>{{ entry.date }}</time>
+    <h1 class="entry-head">{{ entry.head or "Lorem ipsum dolor sit amet consectetur" }}</h1>
+    <p class="entry-stand">{{ entry.stand or "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." }}</p>
+    <span class="entry-meta">
+      <time>{{ entry.date }}</time>
+      {% if entry.author_tags %}<span class="dot">·</span>{{ entry.author_tags | join(", ") }}
+      {% elif entry.parts and entry.parts[0].passage_used and entry.parts[0].passage_used.poet %}<span class="dot">·</span>{{ entry.parts[0].passage_used.poet }}
+      {% endif %}
+    </span>
   </header>
 
-  {% if entry.passage_used and entry.passage_used.text %}
-  <blockquote class="passage">
-    <pre>{{ entry.passage_used.text }}</pre>
-    <cite>
-      {{ entry.passage_used.poet }}{% if entry.passage_used.poem_title %}, &ldquo;{{ entry.passage_used.poem_title }}&rdquo;{% endif %}{% if entry.passage_used.date %} ({{ entry.passage_used.date }}){% endif %}
-    </cite>
-  </blockquote>
-  {% endif %}
+  {% for part in entry.parts %}
+  <section class="part{% if part.roman %} part-numbered{% endif %}">
+    {% if part.roman %}<h2 class="part-roman">{{ part.roman }}</h2>{% endif %}
 
-  <div class="prose">
-    {% for post in entry.posts %}
-    <p>{{ post }}</p>
-    {% endfor %}
-  </div>
+    {% if part.passage_used and part.passage_used.text %}
+    <blockquote class="passage">
+      <pre>{{ part.passage_used.text }}</pre>
+      <cite>
+        {{ part.passage_used.poet }}{% if part.passage_used.poem_title %}, &ldquo;{{ part.passage_used.poem_title }}&rdquo;{% endif %}{% if part.passage_used.date %} ({{ part.passage_used.date }}){% endif %}
+      </cite>
+    </blockquote>
+    {% endif %}
+
+    <div class="prose">
+      {% for post in part.posts %}
+      <p>{{ post }}</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <div class="endmark">❦</div>
 </article>
+
+<nav class="entry-tail">
+  <span class="tail-prev">{% if entry.prev_slug %}<a href="{{ entry.prev_slug }}.html">← Previous</a>{% endif %}</span>
+  <span class="tail-center"><a href="../index.html">Contents</a></span>
+  <span class="tail-next">{% if entry.next_slug %}<a href="{{ entry.next_slug }}.html">Next →</a>{% endif %}</span>
+</nav>
 {% endblock %}

@@ -3,19 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}thinkatron.review{% endblock %}</title>
+<title>{% block title %}The Thinkatron Review{% endblock %}</title>
 <link rel="stylesheet" href="{{ root }}style.css">
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("ttr-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <header class="masthead">
-  <a href="{{ root }}index.html" class="wordmark">thinkatron<span class="tld">.review</span></a>
-  <nav><a href="{{ root }}about.html">About</a></nav>
+  <a href="{{ root }}index.html" class="wordmark"><span class="the">The</span> Thinkatron Review</a>
+  <p class="standfirst">Lorem ipsum dolor sit amet, consectetur adipiscing elit — a single italic standfirst naming what this is and where the writing comes from.</p>
 </header>
+<hr class="masthead-rule">
+<nav class="masthead-nav">
+  <a href="{{ root }}index.html">Contents</a>
+  <a href="{{ root }}about.html">About</a>
+  <a href="{{ root }}colophon.html">Colophon</a>
+  <button type="button" class="theme-toggle" aria-label="Toggle light and dark theme" onclick="(function(){var h=document.documentElement;var next=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',next);try{localStorage.setItem('ttr-theme',next);}catch(e){}})()">Theme</button>
+</nav>
 <main>
 {% block content %}{% endblock %}
 </main>
 <footer>
-  <p>Selected writing by <a href="https://github.com/stwalsh/canonbot">Lucubrator</a>.</p>
+  <p><a href="{{ root }}index.html">The Thinkatron Review</a> &middot; Writing by <a href="https://github.com/stwalsh/canonbot">Lucubrator</a></p>
 </footer>
 </body>
 </html>
