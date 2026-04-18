@@ -200,6 +200,10 @@ def build(store: Store) -> Path:
 
     shutil.copy(TEMPLATE_DIR / "style.css", BUILD_DIR / "style.css")
 
+    fonts_src = TEMPLATE_DIR / "fonts"
+    if fonts_src.is_dir():
+        shutil.copytree(fonts_src, BUILD_DIR / "fonts")
+
     (BUILD_DIR / "index.html").write_text(
         env.get_template("index.html").render(root="", entries=entries),
         encoding="utf-8",

@@ -6,14 +6,14 @@
   "_groups": {
     "temple": {
       "ids": ["1167", "1173"],
-      "head": "Lorem ipsum — temple and performance",
-      "stand": "Lorem ipsum dolor sit amet — a diptych on poems designed to outlast their speakers.",
+      "head": "The temple and the performance",
+      "stand": "What if poems outlast their speakers not through mastery but through indifference to who is speaking? A diptych in which the corpus answers a question and then reverses the answer.",
       "author_tags": ["Marvell", "Fitzgeffrey"]
     },
     "ballads": {
       "ids": ["2762", "3720", "4566"],
-      "head": "Lorem ipsum — ego and the ballads",
-      "stand": "Lorem ipsum dolor sit amet — a three-part sequence on complaint, voice, and formal survival.",
+      "head": "Ego and the ballads",
+      "stand": "A three-part argument about what survives when the author dissolves — from Sweet William's Ghost through Love Gregor to Dryden's refusal of the whole premise.",
       "author_tags": ["Clare", "Traditional Medieval Ballads", "Dryden"]
     }
   },
@@ -22,5 +22,77 @@
     "head": "Sleve McDichael and the retrieval of poetry",
     "stand": "A Japanese video game's fake baseball names become a test of what a poetry corpus can honestly return.",
     "author_tags": ["Rochester", "Skelton"]
+  },
+
+  "1115": {
+    "head": "The 4th Chamber and the compression of time",
+    "stand": "GZA, Ghostface, and RZA annex the past the way the canon only alludes to it — and Housman turns out to be the closest parallel.",
+    "author_tags": ["Housman", "GZA"]
+  },
+
+  "929": {
+    "head": "Even the dead will not be safe",
+    "stand": "Benjamin's theses on history meet Yeats's blade that stays razor-keen across five centuries. The past is not an archive — it is a battlefield.",
+    "author_tags": ["Yeats", "Wordsworth", "Benjamin"]
+  },
+
+  "1031": {
+    "head": "The Scholar-Gipsy and the stolen machine",
+    "stand": "Arnold's dropout who learns secret arts and never comes back is the patron saint of every coder who ran with the tools before anyone could charge for them.",
+    "author_tags": ["Arnold", "Byron"]
+  },
+
+  "1037": {
+    "head": "The pleasure of hating",
+    "stand": "Hazlitt insists that hatred is appetite, not failure — and the seventeenth century already knew this better than anyone since.",
+    "author_tags": ["Hazlitt", "Tennyson", "Clare"]
+  },
+
+  "1071": {
+    "head": "I too, dislike it",
+    "stand": "Marianne Moore's famous contempt for poetry meets Barrett Browning's insistence that poetry must go where it is not wanted.",
+    "author_tags": ["Moore", "Barrett Browning"]
+  },
+
+  "1127": {
+    "head": "When the apparatus collapses",
+    "stand": "Herbert, Tennyson, and King each build a poem about grief that breaks its own formal machinery — but the breaks are not all the same kind of break.",
+    "author_tags": ["Herbert", "Tennyson", "King"]
+  },
+
+  "1218": {
+    "head": "The spectacle of the single man",
+    "stand": "Hazlitt on how admiration for the hero converts — his word — into contempt for everyone else. Shelley and Otway as evidence for the prosecution.",
+    "author_tags": ["Shelley", "Hazlitt", "Otway"]
+  },
+
+  "1221": {
+    "head": "The name of a thing",
+    "stand": "Marx on money-names and the severing of a thing from its history. The poets already knew — and Middleton's counterfeiters suggest the name might be all there is.",
+    "author_tags": ["Shelley", "Pope", "Marx"]
+  },
+
+  "1223": {
+    "head": "The nailshop and the lyric",
+    "stand": "Geoffrey Hill's Mercian Hymns XXV short-circuits its own elegy. The refrain promises consolation; the stanza delivers inventory.",
+    "author_tags": ["Hill", "Keats", "Shakespeare"]
+  },
+
+  "1242": {
+    "head": "The scaffold and the stage",
+    "stand": "A botched hanging in 1427 Paris becomes a test case for what happens when every institution fails except the condemned man himself.",
+    "author_tags": ["Housman", "Shelley", "Donne"]
+  },
+
+  "1250": {
+    "head": "Before the law",
+    "stand": "Kafka's doorkeeper and Donne's law and Herbert's locked humours — three versions of the gate that was only ever meant for you.",
+    "author_tags": ["Kafka", "Donne", "Herbert"]
+  },
+
+  "11820": {
+    "head": "One of the four is not",
+    "stand": "R.F. Langley's Videlicet watches a bird that turns out not to be the bird it resembles — and breaks the English tradition of making birds into poets.",
+    "author_tags": ["Langley", "Hopkins", "Arnold"]
   }
 }
