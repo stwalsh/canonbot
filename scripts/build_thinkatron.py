@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from markupsafe import Markup, escape
 from jinja2 import Environment, FileSystemLoader
 
 from src.store import Store
@@ -71,6 +72,96 @@ def _clean_stim(text: str) -> str:
     if not text:
         return ""
     return re.sub(r"^\[(?:contemplate|compare|engage_self)\]\s*", "", text).strip()
+
+
+# Threshold: quotes with 2+ slashes (3+ verse lines) break out as block quotes.
+_SLASH_THRESHOLD = 2
+
+# Match "quoted text" — Surname  (curly or straight quotes, em dash + attribution)
+_ATTR_QUOTE_RE = re.compile(
+    r'(?P<open>["\u201c])'           # opening quote
+    r'(?P<text>[^"\u201d]+?)'        # quoted text (non-greedy)
+    r'(?P<close>["\u201d])'          # closing quote
+    r'\s*\u2014\s*'                  # em dash with optional spaces
+    r'(?P<attr>[A-Z][A-Za-z\'. ]+?)' # attribution (starts uppercase)
+    r'(?=[.,;:!?\s\u2014\)]|$)',     # followed by punctuation, space, or end
+)
+
+# Match any quoted text — curly or straight quotes.
+# Straight-quote matching requires at least one space inside to avoid
+# contractions or possessives triggering false matches.
+_BARE_QUOTE_RE = re.compile(
+    r'(?P<open>["\u201c])(?P<text>[^"\u201d]{4,}?)(?P<close>["\u201d])'
+)
+
+
+def _format_post(text: str) -> Markup:
+    """Process a post's plain text into HTML with styled verse quotations.
+
+    Two-pass approach:
+    1. Attributed quotes ("..." — Surname) get full treatment: inline <q> or block inset.
+    2. Remaining curly-quoted text gets italic styling (conventional for quotation
+       in critical prose — covers verse fragments, titles, and terms of art).
+    """
+    # Pass 1: find attributed quotes and record their spans
+    attr_spans = {}  # start -> (end, replacement_html)
+    for m in _ATTR_QUOTE_RE.finditer(text):
+        quoted = m.group("text")
+        attr = m.group("attr")
+        slash_count = quoted.count(" / ")
+
+        if slash_count >= _SLASH_THRESHOLD:
+            lines = [line.strip() for line in quoted.split(" / ")]
+            verse_html = "<br>\n".join(escape(line) for line in lines)
+            html = Markup(
+                '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
+                f'{verse_html}</p>\n'
+                f'<cite>{escape(attr)}</cite></blockquote>\n<p>'
+            )
+        else:
+            html = Markup(
+                f'<q class="verse">{escape(quoted)}</q>'
+                f'\u2009<cite class="verse-attr">{escape(attr)}</cite>'
+            )
+        attr_spans[m.start()] = (m.end(), html)
+
+    # Pass 2: find bare curly quotes not already handled by pass 1
+    bare_spans = {}
+    for m in _BARE_QUOTE_RE.finditer(text):
+        # Skip if this overlaps with an attributed quote
+        if any(start <= m.start() < end for start, (end, _) in attr_spans.items()):
+            continue
+        quoted = m.group("text")
+        slash_count = quoted.count(" / ")
+
+        if slash_count >= _SLASH_THRESHOLD:
+            lines = [line.strip() for line in quoted.split(" / ")]
+            verse_html = "<br>\n".join(escape(line) for line in lines)
+            html = Markup(
+                '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
+                f'{verse_html}</p></blockquote>\n<p>'
+            )
+        else:
+            open_q = m.group("open") if m.group("open") == "\u201c" else "\u201c"
+            close_q = "\u201d"
+            html = Markup(f'{open_q}<i class="verse">{escape(quoted)}</i>{close_q}')
+        bare_spans[m.start()] = (m.end(), html)
+
+    # Merge all spans and build output
+    all_spans = {**attr_spans, **bare_spans}
+    if not all_spans:
+        return Markup(escape(text))
+
+    parts = []
+    last_end = 0
+    for start in sorted(all_spans):
+        end, html = all_spans[start]
+        parts.append(escape(text[last_end:start]))
+        parts.append(html)
+        last_end = end
+
+    parts.append(escape(text[last_end:]))
+    return Markup("".join(parts))
 
 
 def _passage(ix: dict) -> dict | None:
@@ -137,7 +228,7 @@ def build(store: Store) -> Path:
         return {
             "roman": roman,
             "passage_used": _passage(ix),
-            "posts": posts,
+            "posts": [_format_post(p) for p in posts],
         }
 
     def _lede(parts: list[dict]) -> str:
