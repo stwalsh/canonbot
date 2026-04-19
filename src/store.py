@@ -253,6 +253,22 @@ class Store:
         ).fetchone()
         return row["total_posted"] if row else 0
 
+    def get_recent_user_stimuli(self, limit: int = 5) -> list[str]:
+        """Get stimulus texts from recent user-fed interactions (stimuli_dir source).
+
+        Returns a list of stimulus text snippets (first 300 chars each),
+        most recent first. Used to anchor self-gen search direction.
+        """
+        rows = self._conn.execute(
+            """SELECT stimulus_text FROM interactions
+               WHERE source LIKE 'stimuli_dir%'
+                 AND composition_decision = 'post'
+                 AND stimulus_text IS NOT NULL AND stimulus_text != ''
+               ORDER BY timestamp DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        return [r["stimulus_text"][:300] for r in rows]
+
     def count_stimulus_responses(self, stimulus_text: str, hours: int = 24) -> int:
         """Count how many times we've composed a response to this stimulus text recently."""
         cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()

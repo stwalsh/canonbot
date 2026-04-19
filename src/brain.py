@@ -587,14 +587,21 @@ def _generate_search_direction(
     self_notes: str | None,
     recent_themes: list[str] | None,
     recent_poets: list[str] | None,
+    recent_stimuli: list[str] | None = None,
 ) -> dict:
-    """Ask Haiku to generate a search query based on self-notes and recent patterns.
+    """Ask Haiku to generate a search query based on self-notes, recent patterns,
+    and recent user-fed stimuli.
 
     Returns {"query": str, "reason": str} — the query for ChromaDB and why.
     """
     parts = []
     if self_notes:
         parts.append(f"Your recent self-notes:\n{self_notes}")
+    if recent_stimuli:
+        stim_block = "\n---\n".join(recent_stimuli)
+        parts.append(
+            f"Recent stimuli your reader has given you (most recent first):\n{stim_block}"
+        )
     if recent_themes:
         parts.append(f"Themes you've been working with: {', '.join(recent_themes)}")
     if recent_poets:
@@ -608,8 +615,9 @@ def _generate_search_direction(
         "You are deciding what to read next from your poetry corpus. "
         "Based on the context below, generate a short search query (a phrase or sentence) "
         "that would find an interesting passage — something you haven't explored enough, "
-        "or a direction your self-notes suggest. Drift slightly from your recent themes; "
-        "don't just repeat them.\n\n"
+        "or a direction your self-notes suggest. Your reader's recent stimuli show what "
+        "they are currently interested in — let the friction between their interests and "
+        "your own preoccupations guide you rather than drifting purely inward.\n\n"
         + "\n\n".join(parts)
         + "\n\nRespond with JSON: {\"query\": \"...\", \"reason\": \"...\"}"
     )

@@ -116,10 +116,8 @@ engine:
 
 # Unified source system (used by src.runner)
 sources:
-  - type: bluesky_timeline
-    account: stwalsh.bsky.social
-    poll_interval: 900
-    mode: triage
+  # bluesky_timeline removed 2026-04-18 — zero featured entries from timeline;
+  # hit rate is in clipper-fed stimuli and self-gen tethered to them.
 
   - type: rss
     name: stichomythia

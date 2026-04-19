@@ -466,9 +466,12 @@ class Engine:
         # Get recently used chunk_ids for anti-repetition
         exclude_ids = self.store.get_used_chunk_ids(hours=self.config["anti_repetition_hours"])
 
+        # Gather recent user-fed stimuli to anchor search direction
+        recent_stimuli = self.store.get_recent_user_stimuli(limit=5)
+
         # Generate search direction
         direction = brain._generate_search_direction(
-            self.client, self_notes, recent_themes, recent_poets,
+            self.client, self_notes, recent_themes, recent_poets, recent_stimuli,
         )
         dir_usage = direction.pop("_usage", {})
         result["tokens_in"] += dir_usage.get("input_tokens", 0)
