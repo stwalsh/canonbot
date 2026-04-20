@@ -285,6 +285,29 @@ blockquote.verse-inset {
   margin: 0;
 }
 
+/* Prose inset — same wrapper treatment as .verse-inset, but the inner
+   paragraph is roman (not italic). Triggered by the parser when a
+   quotation hits 25+ words with fewer than 2 slashes (i.e. prose, not
+   lineated verse). */
+blockquote.prose-inset {
+  margin: 1.5rem 0 1.5rem 1.25rem;
+  padding: 0;
+}
+blockquote.prose-inset p {
+  font-family: var(--serif);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Titles of works — long-form in markdown `*asterisks*`, short-form in
+   single curly quotes, both rendered by the parser as <i class="title">.
+   Hook class kept even when default italic does the visible work, so we
+   can style titles separately from quotations later if needed. */
+i.title {
+  /* <i> is italic by default; hook kept for future fine-tuning */
+}
+
 /* — multi-part (composite) entries — */
 
 .part { margin: 0; }
