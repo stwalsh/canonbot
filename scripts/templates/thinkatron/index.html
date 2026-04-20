@@ -6,7 +6,7 @@
   {% for entry in entries %}
     <li>
       <a href="entries/{{ entry.slug }}.html">
-        <span class="entry-head">{{ entry.head or "Lorem ipsum dolor sit amet consectetur" }}</span>
+        <h2 class="entry-head">{{ entry.head or "Lorem ipsum dolor sit amet consectetur" }}</h2>
         <span class="entry-stand">{{ entry.stand or "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore." }}</span>
         <span class="entry-meta">
           <time>{{ entry.date }}</time>
