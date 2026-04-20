@@ -277,6 +277,12 @@ main { padding-bottom: 4rem; }
   white-space: pre-wrap;
   margin: 0;
 }
+/* Dramatic-verse speaker attributions — italic to differentiate from the
+   speech itself. Classical convention; lighter than small-caps and keeps
+   the small-cap register reserved for editorial furniture. */
+.passage .speaker {
+  font-style: italic;
+}
 .passage cite {
   display: block;
   margin-top: 0.85rem;

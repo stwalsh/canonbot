@@ -179,6 +179,32 @@ def _format_post(text: str) -> Markup:
     return Markup("".join(parts))
 
 
+# Speaker attribution lines in dramatic verse: a capitalised word (optionally
+# two, for "First Servant." or all-caps "PROMETHEUS.") alone on a line,
+# terminated by a period. Matches inside MULTILINE so `^`/`$` are per-line.
+_SPEAKER_RE = re.compile(
+    r'^([A-Z][a-zA-Z]*(?: [A-Z][a-zA-Z]*)*)\.$',
+    re.MULTILINE,
+)
+
+
+def _format_passage_text(text: str) -> Markup:
+    """Escape the passage text and mark dramatic-verse speaker attributions
+    in italic so they're typographically distinct from the speech itself.
+
+    Detection is pattern-based at render time — the source text Lucubrator
+    retrieves already has 'Fury.' or 'Prometheus.' on their own lines; we
+    just need to mark them as <span class="speaker"> for CSS.
+    """
+    safe = str(escape(text))
+    return Markup(
+        _SPEAKER_RE.sub(
+            lambda m: f'<span class="speaker">{m.group(0)}</span>',
+            safe,
+        )
+    )
+
+
 def _passage(ix: dict) -> dict | None:
     pu = ix.get("passage_used")
     if isinstance(pu, str):
@@ -192,7 +218,7 @@ def _passage(ix: dict) -> dict | None:
         "poet": pu.get("poet", ""),
         "poem_title": pu.get("poem_title", ""),
         "date": pu.get("date", ""),
-        "text": pu.get("text", ""),
+        "text": _format_passage_text(pu.get("text", "")),
     }
 
 
