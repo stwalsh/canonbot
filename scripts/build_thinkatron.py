@@ -307,6 +307,17 @@ def build(store: Store) -> Path:
         stim_author = ov.get("stimulus_author") or None
         stim_label = ov.get("stimulus_label") or None
 
+        # Kindle notebook / Amazon private-reader URLs aren't reader-accessible.
+        # Strip the URI so epigraph-mode pieces render the quoted text without a
+        # broken link, and link-mode pieces suppress entirely (mystery stands).
+        # Overrides can provide a real public source per-piece (e.g. a Project
+        # Gutenberg edition or a scholarly archive) when the piece warrants it.
+        if stim_uri and re.match(
+            r"^https?://(?:www\.)?(?:kindle|read)\.amazon\.\w+",
+            stim_uri,
+        ):
+            stim_uri = None
+
         # Extract URL from "Source: https://..." line if no explicit URI
         if not stim_uri and stim_text:
             url_match = re.search(r"^Source:\s*(https?://\S+)", stim_text, re.MULTILINE)
