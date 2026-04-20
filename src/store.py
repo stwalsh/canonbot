@@ -76,6 +76,26 @@ CREATE TABLE IF NOT EXISTS passage_notes (
     note TEXT,
     themes TEXT
 );
+
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id INTEGER PRIMARY KEY,
+    user_name TEXT NOT NULL,
+    started TEXT NOT NULL,
+    last_active TEXT NOT NULL,
+    summary TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_name);
+
+CREATE TABLE IF NOT EXISTS chat_turns (
+    id INTEGER PRIMARY KEY,
+    session_id INTEGER NOT NULL REFERENCES chat_sessions(id),
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    model_used TEXT,
+    passages_used TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_chat_turns_session ON chat_turns(session_id);
 """
 
 
@@ -630,3 +650,66 @@ class Store:
                         pass
             results.append(d)
         return results
+
+    # --- Chat sessions ---
+
+    def create_chat_session(self, user_name: str) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        cur = self._conn.execute(
+            "INSERT INTO chat_sessions (user_name, started, last_active) VALUES (?, ?, ?)",
+            (user_name, now, now),
+        )
+        self._conn.commit()
+        return cur.lastrowid
+
+    def add_chat_turn(
+        self, session_id: int, role: str, content: str,
+        model_used: str | None = None, passages_used: list[dict] | None = None,
+    ) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        cur = self._conn.execute(
+            """INSERT INTO chat_turns (session_id, role, content, timestamp, model_used, passages_used)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (session_id, role, content, now, model_used,
+             json.dumps(passages_used) if passages_used else None),
+        )
+        self._conn.execute(
+            "UPDATE chat_sessions SET last_active = ? WHERE id = ?",
+            (now, session_id),
+        )
+        self._conn.commit()
+        return cur.lastrowid
+
+    def get_chat_turns(self, session_id: int, limit: int | None = None) -> list[dict]:
+        q = "SELECT * FROM chat_turns WHERE session_id = ? ORDER BY id ASC"
+        if limit:
+            q += f" LIMIT {limit}"
+        return [dict(r) for r in self._conn.execute(q, (session_id,)).fetchall()]
+
+    def get_recent_chat_turns(self, session_id: int, limit: int = 12) -> list[dict]:
+        """Get last N turns for the sliding window."""
+        rows = self._conn.execute(
+            "SELECT * FROM chat_turns WHERE session_id = ? ORDER BY id DESC LIMIT ?",
+            (session_id, limit),
+        ).fetchall()
+        return [dict(r) for r in reversed(rows)]
+
+    def update_chat_summary(self, session_id: int, summary: str):
+        self._conn.execute(
+            "UPDATE chat_sessions SET summary = ? WHERE id = ?",
+            (summary, session_id),
+        )
+        self._conn.commit()
+
+    def get_chat_session(self, session_id: int) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM chat_sessions WHERE id = ?", (session_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_latest_chat_session(self, user_name: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM chat_sessions WHERE user_name = ? ORDER BY last_active DESC LIMIT 1",
+            (user_name,),
+        ).fetchone()
+        return dict(row) if row else None
