@@ -415,7 +415,43 @@ Sean's editorial hand.
 
 ---
 
-## 10. Contact points between the two sides
+## 10. Gotcha — post-hoc paragraph migrations
+
+Noted 2026-04-20 after entry 1167 (temple Part I) was accidentally truncated
+by the opening-pass migration.
+
+**The trap:** `posts` is a JSON list of strings. Usually each list element is
+one paragraph. But some older entries were stored as a *single-element list*
+whose one element is a long string containing multiple paragraphs separated
+by blank lines (`\n\n`). Any migration that does `[new_first] + posts[1:]`
+will truncate these entries, because `posts[1:]` is empty.
+
+**The rule:** for any migration that operates at the paragraph level
+(replacing paragraph N, inserting between paragraphs, etc.), always check
+for the single-element-with-blank-lines case first:
+
+```python
+if len(posts) == 1 and "\n\n" in posts[0]:
+    blocks = [b.strip() for b in posts[0].split("\n\n") if b.strip()]
+    # operate on `blocks` as if they were separate list elements
+else:
+    # operate on posts as-is
+```
+
+Also: migrations should ideally read from `posts` (not `edited_posts`),
+because `edited_posts` may already carry a broken transformation from a
+previous run. Reading from `posts` makes migrations idempotent against their
+own bugs.
+
+Migrations so far:
+- `scripts/migrations/apply_opening_rewrites_2026_04_20.py` — did not split
+  on blank lines; truncated id 1167 (temple Part I).
+- `scripts/migrations/apply_bridge_fixes_2026_04_20.py` — surgical single-
+  paragraph substitution; safe.
+- `scripts/migrations/repair_1167_temple_part_i.py` — repair for the above,
+  with the blank-line split logic included.
+
+## 11. Contact points between the two sides
 
 - **Overrides** live in `canonbot/config/thinkatron_overrides.json` —
   per-id editorial fields (head, stand, author_tags) + `_groups` for
