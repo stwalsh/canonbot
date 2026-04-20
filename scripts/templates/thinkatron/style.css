@@ -229,7 +229,7 @@ main { padding-bottom: 4rem; }
   max-width: var(--measure);
   margin: 0 auto 2rem;
   padding: 0 1.25rem;
-  text-align: center;
+  text-align: left;
 }
 .epigraph p {
   font-style: italic;
