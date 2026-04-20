@@ -36,7 +36,7 @@
   :root {
     --paper: #14110e;
     --ink: #ece4d0;
-    --ink-muted: #8a8371;
+    --ink-muted: #a8a090;
     --rule: #33302a;
     --accent: #c27b5a;
   }
@@ -379,13 +379,13 @@ i.title {
   text-align: center;
 }
 .static h2 {
-  font-size: 0.88rem;
-  margin: 2.25rem 0 0.6rem;
   font-family: var(--serif);
-  font-variant: all-small-caps;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
+  font-size: 1.1rem;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin: 2rem 0 0.5rem;
 }
 .static p {
   font-size: 1.05rem;
