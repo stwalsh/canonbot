@@ -20,6 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import markdown as md
 from markupsafe import Markup, escape
 from jinja2 import Environment, FileSystemLoader
 
@@ -28,7 +29,15 @@ from src.store import Store
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates" / "thinkatron"
 BUILD_DIR = Path(__file__).resolve().parent.parent / "data" / "thinkatron_build"
 OVERRIDES_PATH = Path(__file__).resolve().parent.parent / "config" / "thinkatron_overrides.json"
+PAGES_DIR = Path(__file__).resolve().parent.parent / "config" / "thinkatron_pages"
 REPO_URL = "git@github.com:stwalsh/thinkatron.git"
+
+
+def _render_markdown(path: Path) -> Markup:
+    """Render a markdown file to HTML with smarty (curly quotes, em-dashes)."""
+    text = path.read_text(encoding="utf-8")
+    html = md.markdown(text, extensions=["smarty", "def_list"])
+    return Markup(html)
 
 
 def _load_overrides_raw() -> dict:
@@ -305,8 +314,10 @@ def build(store: Store) -> Path:
         env.get_template("index.html").render(root="", entries=entries),
         encoding="utf-8",
     )
+    about_md = PAGES_DIR / "about.md"
+    about_content = _render_markdown(about_md) if about_md.exists() else Markup("")
     (BUILD_DIR / "about.html").write_text(
-        env.get_template("about.html").render(root=""),
+        env.get_template("about.html").render(root="", about_content=about_content),
         encoding="utf-8",
     )
     (BUILD_DIR / "colophon.html").write_text(
