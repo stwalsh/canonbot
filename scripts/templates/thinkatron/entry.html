@@ -13,6 +13,19 @@
     </span>
   </header>
 
+  {% if entry.stimulus %}
+  {% if entry.stimulus.mode == "epigraph" %}
+  <blockquote class="epigraph">
+    <p>{{ entry.stimulus.text }}</p>
+    {% if entry.stimulus.author or entry.stimulus.uri %}
+    <cite>{% if entry.stimulus.uri %}<a href="{{ entry.stimulus.uri }}">{{ entry.stimulus.author or entry.stimulus.label or "Source" }}</a>{% else %}{{ entry.stimulus.author }}{% endif %}</cite>
+    {% endif %}
+  </blockquote>
+  {% elif entry.stimulus.mode == "link" %}
+  <p class="stimulus-cite">On <a href="{{ entry.stimulus.uri }}">{{ entry.stimulus.label }}</a></p>
+  {% endif %}
+  {% endif %}
+
   {% for part in entry.parts %}
   <section class="part{% if part.roman %} part-numbered{% endif %}">
     {% if part.roman %}<h2 class="part-roman">{{ part.roman }}</h2>{% endif %}

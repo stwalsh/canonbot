@@ -253,6 +253,90 @@ def build(store: Store) -> Path:
                 return first[:140] + ("…" if len(first) > 140 else "")
         return ""
 
+    # Max words for a stimulus to render as an inline epigraph.
+    # Above this, we show a cite link instead.
+    EPIGRAPH_MAX_WORDS = 150
+
+    def _stimulus(ix: dict, ov: dict) -> dict | None:
+        """Build stimulus display data for an entry.
+
+        Returns None if stimulus should be suppressed, otherwise:
+        {
+            "mode": "epigraph" | "link" | None,
+            "text": str | None,      # for epigraph
+            "uri": str | None,        # for link
+            "author": str | None,     # attribution
+            "label": str | None,      # link text override
+        }
+        """
+        # Override can suppress entirely
+        if ov.get("stimulus_display") == "suppress":
+            return None
+
+        raw_stim = _clean_stim(ix.get("stimulus_text") or "")
+
+        # Override can supply custom stimulus text/uri/author/label
+        stim_text = ov.get("stimulus_text") or raw_stim
+        stim_uri = ov.get("stimulus_uri") or ix.get("stimulus_uri") or None
+        stim_author = ov.get("stimulus_author") or None
+        stim_label = ov.get("stimulus_label") or None
+
+        # Extract URL from "Source: https://..." line if no explicit URI
+        if not stim_uri and stim_text:
+            url_match = re.search(r"^Source:\s*(https?://\S+)", stim_text, re.MULTILINE)
+            if url_match:
+                stim_uri = url_match.group(1)
+
+        # Extract title from markdown heading if present (e.g. "# GZA – 4th Chamber")
+        title_from_heading = None
+        if stim_text:
+            heading_match = re.match(r"^#\s+(.+?)(?:\s*\n|$)", stim_text)
+            if heading_match:
+                title_from_heading = heading_match.group(1).strip()
+
+        # Suppress self-gen stimuli (internal notes, not reader-facing)
+        ix_author = ix.get("stimulus_author") or ""
+        if ix_author == "self" and not ov.get("stimulus_text"):
+            return None
+
+        if not stim_text and not stim_uri:
+            return None
+
+        # Clean up stimulus text for display
+        clean = stim_text
+        if clean:
+            # Strip photo/text extraction headers
+            clean = re.sub(r"^#\s*(Photo|Text Extraction)\s*\n+", "", clean, flags=re.MULTILINE).strip()
+            # Strip source URL line
+            clean = re.sub(r"^Source:\s*https?://\S+\s*\n?", "", clean, flags=re.MULTILINE).strip()
+            # Strip markdown heading (already captured as title)
+            clean = re.sub(r"^#\s+.+?\n+", "", clean, flags=re.MULTILINE).strip()
+
+        # Use heading-derived title as label if we don't have one
+        if not stim_label and title_from_heading:
+            stim_label = title_from_heading
+
+        word_count = len(clean.split()) if clean else 0
+
+        if clean and word_count <= EPIGRAPH_MAX_WORDS:
+            return {
+                "mode": "epigraph",
+                "text": clean,
+                "uri": stim_uri,
+                "author": stim_author,
+                "label": stim_label,
+            }
+        elif stim_uri:
+            return {
+                "mode": "link",
+                "text": None,
+                "uri": stim_uri,
+                "author": stim_author,
+                "label": stim_label or stim_author or stim_uri.split("//")[-1].split("/")[0],
+            }
+        else:
+            return None
+
     entries = []
 
     for ix in solo_rows:
@@ -270,6 +354,7 @@ def build(store: Store) -> Path:
             "author_tags": tags,
             "lede": _lede(parts),
             "parts": parts,
+            "stimulus": _stimulus(ix, ov),
         })
 
     for gid, raw_parts in group_rows.items():
@@ -280,6 +365,9 @@ def build(store: Store) -> Path:
         if isinstance(tags, str):
             tags = [tags]
         latest_ts = max((ix.get("timestamp", "") for _, ix in raw_parts), default="")
+        # Group stimulus: from the first part's interaction + group-level overrides
+        first_ix = raw_parts[0][1] if raw_parts else {}
+        group_ov = {k: v for k, v in g.items() if k.startswith("stimulus_")}
         entries.append({
             "id": gid,
             "slug": gid,
@@ -289,6 +377,7 @@ def build(store: Store) -> Path:
             "author_tags": tags,
             "lede": _lede(parts),
             "parts": parts,
+            "stimulus": _stimulus(first_ix, group_ov),
         })
 
     entries.sort(key=lambda e: e["date"], reverse=True)

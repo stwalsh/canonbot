@@ -223,6 +223,48 @@ main { padding-bottom: 4rem; }
   display: inline-block;
 }
 
+/* — stimulus epigraph / cite — */
+
+.epigraph {
+  max-width: var(--measure);
+  margin: 0 auto 2rem;
+  padding: 0 1.25rem;
+  text-align: center;
+}
+.epigraph p {
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  margin: 0;
+}
+.epigraph cite {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--serif);
+  font-variant: all-small-caps;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  font-style: normal;
+}
+.epigraph cite a { color: var(--ink-muted); }
+.epigraph cite a:hover { color: var(--accent); }
+
+.stimulus-cite {
+  max-width: var(--measure);
+  margin: 0 auto 1.5rem;
+  padding: 0 1.25rem;
+  text-align: center;
+  font-family: var(--serif);
+  font-variant: all-small-caps;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+.stimulus-cite a { color: var(--ink-muted); }
+.stimulus-cite a:hover { color: var(--accent); }
+
 .passage {
   margin: 2rem 0;
   padding: 0.25rem 0 0.25rem 1.25rem;
