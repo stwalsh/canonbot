@@ -103,27 +103,40 @@ def _format_post(text: str) -> Markup:
     2. Remaining curly-quoted text gets italic styling (conventional for quotation
        in critical prose — covers verse fragments, titles, and terms of art).
     """
+    # Block-inset cases need to absorb any trailing sentence-ending
+    # punctuation, otherwise it orphans at the start of the continuation
+    # paragraph once the block breaks the flow.
+    def _inset_end(match_end: int) -> int:
+        if match_end < len(text) and text[match_end] in ".,;:!?":
+            return match_end + 1
+        return match_end
+
     # Pass 1: find attributed quotes and record their spans
     attr_spans = {}  # start -> (end, replacement_html)
     for m in _ATTR_QUOTE_RE.finditer(text):
         quoted = m.group("text")
-        attr = m.group("attr")
         slash_count = quoted.count(" / ")
 
         if slash_count >= _SLASH_THRESHOLD:
             lines = [line.strip() for line in quoted.split(" / ")]
             verse_html = "<br>\n".join(escape(line) for line in lines)
+            # Block inset: italic lineated verse, cite suppressed (fluency
+            # convention extends from inline to inset). Trailing punct
+            # absorbed so the continuation paragraph doesn't start with
+            # stranded `. `.
             html = Markup(
                 '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
-                f'{verse_html}</p>\n'
-                f'<cite>{escape(attr)}</cite></blockquote>\n<p>'
+                f'{verse_html}</p></blockquote>\n<p>'
             )
+            end = _inset_end(m.end())
         else:
-            html = Markup(
-                f'<q class="verse">{escape(quoted)}</q>'
-                f'\u2009<cite class="verse-attr">{escape(attr)}</cite>'
-            )
-        attr_spans[m.start()] = (m.end(), html)
+            # Inline attributed: italic, no quotes, attribution suppressed.
+            # The `— Surname` pattern is a parser flag; the render folds the
+            # quotation into the writer's prose as italic-no-quotes (belle-
+            # lettristic convention — see Barthes, Nabokov, LRB/NYRB long-form).
+            html = Markup(f'<i class="verse">{escape(quoted)}</i>')
+            end = m.end()
+        attr_spans[m.start()] = (end, html)
 
     # Pass 2: find bare curly quotes not already handled by pass 1
     bare_spans = {}
@@ -141,11 +154,14 @@ def _format_post(text: str) -> Markup:
                 '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
                 f'{verse_html}</p></blockquote>\n<p>'
             )
+            end = _inset_end(m.end())
         else:
-            open_q = m.group("open") if m.group("open") == "\u201c" else "\u201c"
-            close_q = "\u201d"
-            html = Markup(f'{open_q}<i class="verse">{escape(quoted)}</i>{close_q}')
-        bare_spans[m.start()] = (m.end(), html)
+            # Bare short quote: italic, no quotes — matches the attributed
+            # case for visual consistency. Any curly-quoted fragment in the
+            # source becomes an inline italicised phrase on the page.
+            html = Markup(f'<i class="verse">{escape(quoted)}</i>')
+            end = m.end()
+        bare_spans[m.start()] = (end, html)
 
     # Merge all spans and build output
     all_spans = {**attr_spans, **bare_spans}
