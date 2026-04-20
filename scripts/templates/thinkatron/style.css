@@ -251,19 +251,50 @@ main { padding-bottom: 4rem; }
 .epigraph cite a { color: var(--ink-muted); }
 .epigraph cite a:hover { color: var(--accent); }
 
+/* Stimulus cite line — the "On [link]" case for external sources too long
+   to quote in full. Roman "On" + italic title (MHRA long-works convention),
+   left-aligned so it reads as a peer of the retrieval and response, not
+   as header-adjacent furniture or an echo of the italic stand above. */
 .stimulus-cite {
   max-width: var(--measure);
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 2rem;
   padding: 0 1.25rem;
-  text-align: center;
+  text-align: left;
   font-family: var(--serif);
-  font-variant: all-small-caps;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.stimulus-cite a { color: var(--ink); font-style: italic; }
+.stimulus-cite a:hover { color: var(--accent); }
+
+/* Section rule — subordinate threshold inside an entry. Marks the transition
+   from article-identity (head/stand/meta) into article-body (stimulus →
+   retrieval → response as one continuous flow). Subordinate to .masthead-rule
+   by scale: smaller fleuron (1rem vs masthead's 1.35rem), muted colour. One
+   per entry page, always rendered. The three body beats have their own
+   typographic differentiation (italic title-cite / bordered passage / drop-cap
+   prose), so no further rules needed between them. */
+.section-rule {
+  max-width: var(--measure);
+  margin: 2rem auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1.25rem;
+}
+.section-rule::before,
+.section-rule::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--rule);
+}
+.section-rule .fleuron {
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1;
   color: var(--ink-muted);
 }
-.stimulus-cite a { color: var(--ink-muted); }
-.stimulus-cite a:hover { color: var(--accent); }
 
 .passage {
   margin: 2rem 0;
