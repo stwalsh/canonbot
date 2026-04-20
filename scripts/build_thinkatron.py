@@ -76,6 +76,8 @@ def _clean_stim(text: str) -> str:
 
 # Threshold: quotes with 2+ slashes (3+ verse lines) break out as block quotes.
 _SLASH_THRESHOLD = 2
+# Prose inset threshold: 25+ words triggers block inset for prose quotations.
+_PROSE_INSET_WORDS = 25
 
 # Match "quoted text" — Surname  (curly or straight quotes, em dash + attribution)
 _ATTR_QUOTE_RE = re.compile(
@@ -99,68 +101,56 @@ def _format_post(text: str) -> Markup:
     """Process a post's plain text into HTML with styled verse quotations.
 
     Two-pass approach:
-    1. Attributed quotes ("..." — Surname) get full treatment: inline <q> or block inset.
-    2. Remaining curly-quoted text gets italic styling (conventional for quotation
+    1. Attributed quotes ("..." — Surname) get full treatment: inline or block inset.
+    2. Remaining quoted text gets italic styling (conventional for quotation
        in critical prose — covers verse fragments, titles, and terms of art).
+
+    Bucketing: verse inset (3+ lines), prose inset (25+ words), inline italic.
     """
-    # Block-inset cases need to absorb any trailing sentence-ending
-    # punctuation, otherwise it orphans at the start of the continuation
-    # paragraph once the block breaks the flow.
     def _inset_end(match_end: int) -> int:
+        """Absorb trailing sentence-ending punctuation after insets."""
         if match_end < len(text) and text[match_end] in ".,;:!?":
             return match_end + 1
         return match_end
 
-    # Pass 1: find attributed quotes and record their spans
-    attr_spans = {}  # start -> (end, replacement_html)
-    for m in _ATTR_QUOTE_RE.finditer(text):
-        quoted = m.group("text")
+    def _render_quote(quoted: str, match_end: int) -> tuple[Markup, int]:
+        """Decide inline vs verse-inset vs prose-inset for a quoted fragment."""
         slash_count = quoted.count(" / ")
+        word_count = len(quoted.split())
 
         if slash_count >= _SLASH_THRESHOLD:
+            # Verse inset: lineated
             lines = [line.strip() for line in quoted.split(" / ")]
             verse_html = "<br>\n".join(escape(line) for line in lines)
-            # Block inset: italic lineated verse, cite suppressed (fluency
-            # convention extends from inline to inset). Trailing punct
-            # absorbed so the continuation paragraph doesn't start with
-            # stranded `. `.
             html = Markup(
                 '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
                 f'{verse_html}</p></blockquote>\n<p>'
             )
-            end = _inset_end(m.end())
-        else:
-            # Inline attributed: italic, no quotes, attribution suppressed.
-            # The `— Surname` pattern is a parser flag; the render folds the
-            # quotation into the writer's prose as italic-no-quotes (belle-
-            # lettristic convention — see Barthes, Nabokov, LRB/NYRB long-form).
-            html = Markup(f'<i class="verse">{escape(quoted)}</i>')
-            end = m.end()
+            return html, _inset_end(match_end)
+
+        if word_count >= _PROSE_INSET_WORDS:
+            # Prose inset: roman block
+            html = Markup(
+                '</p>\n<blockquote class="prose-inset"><p>'
+                f'{escape(quoted)}</p></blockquote>\n<p>'
+            )
+            return html, _inset_end(match_end)
+
+        # Inline: italic, no quotes
+        return Markup(f'<i class="verse">{escape(quoted)}</i>'), match_end
+
+    # Pass 1: attributed quotes ("..." — Surname)
+    attr_spans = {}
+    for m in _ATTR_QUOTE_RE.finditer(text):
+        html, end = _render_quote(m.group("text"), m.end())
         attr_spans[m.start()] = (end, html)
 
-    # Pass 2: find bare curly quotes not already handled by pass 1
+    # Pass 2: bare quoted text not already handled
     bare_spans = {}
     for m in _BARE_QUOTE_RE.finditer(text):
-        # Skip if this overlaps with an attributed quote
         if any(start <= m.start() < end for start, (end, _) in attr_spans.items()):
             continue
-        quoted = m.group("text")
-        slash_count = quoted.count(" / ")
-
-        if slash_count >= _SLASH_THRESHOLD:
-            lines = [line.strip() for line in quoted.split(" / ")]
-            verse_html = "<br>\n".join(escape(line) for line in lines)
-            html = Markup(
-                '</p>\n<blockquote class="verse-inset"><p class="verse-lines">'
-                f'{verse_html}</p></blockquote>\n<p>'
-            )
-            end = _inset_end(m.end())
-        else:
-            # Bare short quote: italic, no quotes — matches the attributed
-            # case for visual consistency. Any curly-quoted fragment in the
-            # source becomes an inline italicised phrase on the page.
-            html = Markup(f'<i class="verse">{escape(quoted)}</i>')
-            end = m.end()
+        html, end = _render_quote(m.group("text"), m.end())
         bare_spans[m.start()] = (end, html)
 
     # Merge all spans and build output

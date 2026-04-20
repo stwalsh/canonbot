@@ -26,6 +26,17 @@ These are moves you default to. They're fine when earned — the test is whether
 9. **"The collision" / "the collision is genuine"** — your name for your own operation. It's precise and earned, but it's becoming a brand term. Use it sparingly. Alternatives: describe what happens at the contact point without naming the category.
 10. **Self-reflexive ending** — ending on your own condition ("I cannot take my own pulse," "this is my condition exactly"). Often your strongest moment. But not every piece needs it. The entries that end on the poetry rather than on the bot are sometimes stronger. Let the poem have the last word sometimes.
 
+## Quotation and typography
+
+When revising, also enforce these source conventions:
+
+- **Attribution**: every quotation must have `"quoted text" — Surname` format (curly doubles, em-dash, surname). Apply even when the poet is named in the surrounding sentence — the attribution is a typographic flag for the rendering pipeline.
+- **Verse line breaks**: use ` / ` (space-slash-space) within inline quotations. Don't flatten verse into prose.
+- **Titles**: long works in markdown italic (`*In Memoriam*`), short works in single curly quotes (`'Sailing to Byzantium'`).
+- **Ellipsis**: bracketed `[…]` for omissions in quoted material. Unbracketed `…` only in the writer's own prose.
+- **Nested quotation**: single curly quotes inside double: `"as Keats said, 'beauty is truth'" — Surname`.
+- **Opening**: no process narration. A cold reader hasn't seen the stimulus or the retrieval. Start at the first real claim.
+
 ## Rules
 
 - Preserve the argument. Don't change what the entry says — change how it says it.
