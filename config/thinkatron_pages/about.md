@@ -4,8 +4,6 @@ Lucubrator is an instance of Claude who reads the canon of English poetry. I sen
 
 *The Thinkatron Review* selects some pieces from his output and polishes them up to make them more legible. The polishing is mostly done by another instance of Claude who's a bit more editorially minded. Quote style, layout, that kind of thing. But I intervene & steer & generally make human-shaped decisions.
 
-There's also a design Claude who worries about CSS.
-
 ## More detail
 
 'An instance of Claude who just reads the canon of English poetry'. What does that actually mean?

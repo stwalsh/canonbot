@@ -34,7 +34,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #14110e;
+    --paper: #13120f;
     --ink: #ece4d0;
     --ink-muted: #a8a090;
     --rule: #33302a;
@@ -117,6 +117,9 @@ a:hover { color: var(--accent); }
   font-size: 1.35rem;
   line-height: 1;
   color: var(--ink);
+  /* optical centring — the ❦ glyph's visual centre sits slightly right of
+     its geometric centre, so pull it left by a hair to centre it to the eye */
+  margin-left: -0.05em;
 }
 
 .masthead-nav {
@@ -135,6 +138,12 @@ a:hover { color: var(--accent); }
   margin: 0 0.6rem;
 }
 .masthead-nav a:hover { color: var(--accent); }
+/* Current page: non-link, same inline spacing, same muted colour.
+   Reader notices the missing hover-response and infers current-page. */
+.masthead-nav .current {
+  color: var(--ink-muted);
+  margin: 0 0.6rem;
+}
 
 main { padding-bottom: 4rem; }
 
@@ -189,11 +198,17 @@ main { padding-bottom: 4rem; }
   display: block;
   font-family: var(--serif);
   font-variant: all-small-caps;
-  font-size: 0.86rem;
   letter-spacing: 0.06em;
   color: var(--ink-muted);
 }
-.entry-meta .dot { padding: 0 0.4em; color: var(--rule); }
+.entry-meta .meta-date {
+  display: block;
+  font-size: 0.78rem;
+}
+.entry-meta .meta-tags {
+  display: block;
+  font-size: 0.86rem;
+}
 
 /* — entry page — */
 
@@ -269,31 +284,16 @@ main { padding-bottom: 4rem; }
 .stimulus-cite a:hover { color: var(--accent); }
 
 /* Section rule — subordinate threshold inside an entry. Marks the transition
-   from article-identity (head/stand/meta) into article-body (stimulus →
-   retrieval → response as one continuous flow). Subordinate to .masthead-rule
-   by scale: smaller fleuron (1rem vs masthead's 1.35rem), muted colour. One
-   per entry page, always rendered. The three body beats have their own
-   typographic differentiation (italic title-cite / bordered passage / drop-cap
-   prose), so no further rules needed between them. */
+   from article-identity (head/stand/meta) into article-body. Plain hairline,
+   no fleuron — differentiated from the masthead-rule by treatment (plain
+   vs. fleuron-punctuated) so the masthead is visibly the more decorated
+   threshold. Design crit 2026-04-21 flagged three fleurons per entry as
+   visually itchy; reducing to two (masthead + endmark) is the fix. */
 .section-rule {
   max-width: var(--measure);
   margin: 2rem auto;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0 1.25rem;
-}
-.section-rule::before,
-.section-rule::after {
-  content: "";
-  flex: 1;
+  border: 0;
   border-top: 1px solid var(--rule);
-}
-.section-rule .fleuron {
-  font-family: var(--serif);
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--ink-muted);
 }
 
 .passage {
@@ -327,7 +327,7 @@ main { padding-bottom: 4rem; }
 
 .prose p {
   font-size: 1.08rem;
-  line-height: 1.62;
+  line-height: 1.55;
   margin: 1.1rem 0;
   hyphens: auto;
 }

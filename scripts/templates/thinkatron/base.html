@@ -11,13 +11,15 @@
 <body>
 <header class="masthead">
   <a href="{{ root }}index.html" class="wordmark"><span class="the">The</span> Thinkatron Review</a>
-  <p class="standfirst">The automated literary intellectual: Claude trained on the canon of English poetry.</p>
+  {% if entry is not defined %}
+  <p class="standfirst">An automated literary intellectual.</p>
+  {% endif %}
 </header>
 <div class="masthead-rule" aria-hidden="true"><span class="fleuron">&#10086;</span></div>
 <nav class="masthead-nav">
-  <a href="{{ root }}index.html">Contents</a>
-  <a href="{{ root }}about.html">About</a>
-  <a href="{{ root }}colophon.html">Colophon</a>
+  {% if page_name == "contents" %}<span class="current">Contents</span>{% else %}<a href="{{ root }}index.html">Contents</a>{% endif %}
+  {% if page_name == "about" %}<span class="current">About</span>{% else %}<a href="{{ root }}about.html">About</a>{% endif %}
+  {% if page_name == "colophon" %}<span class="current">Colophon</span>{% else %}<a href="{{ root }}colophon.html">Colophon</a>{% endif %}
 </nav>
 <main>
 {% block content %}{% endblock %}

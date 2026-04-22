@@ -240,8 +240,25 @@ def _fetch_featured(store: Store) -> list[dict]:
     return out
 
 
+def _human_date(iso_date: str) -> str:
+    """Format an ISO date string as human-readable: '9 April 2026'.
+    Fallback to the original string if parsing fails."""
+    if not iso_date:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso_date)
+    except (ValueError, TypeError):
+        return iso_date
+    # %-d (non-zero-padded day) works on Linux/macOS; %#d on Windows.
+    try:
+        return dt.strftime("%-d %B %Y")
+    except ValueError:
+        return dt.strftime("%#d %B %Y")
+
+
 def build(store: Store) -> Path:
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
+    env.filters["human_date"] = _human_date
 
     rows = _fetch_featured(store)
     overrides = _load_overrides()
@@ -437,17 +454,17 @@ def build(store: Store) -> Path:
         shutil.copytree(fonts_src, BUILD_DIR / "fonts")
 
     (BUILD_DIR / "index.html").write_text(
-        env.get_template("index.html").render(root="", entries=entries),
+        env.get_template("index.html").render(root="", entries=entries, page_name="contents"),
         encoding="utf-8",
     )
     about_md = PAGES_DIR / "about.md"
     about_content = _render_markdown(about_md) if about_md.exists() else Markup("")
     (BUILD_DIR / "about.html").write_text(
-        env.get_template("about.html").render(root="", about_content=about_content),
+        env.get_template("about.html").render(root="", about_content=about_content, page_name="about"),
         encoding="utf-8",
     )
     (BUILD_DIR / "colophon.html").write_text(
-        env.get_template("colophon.html").render(root=""),
+        env.get_template("colophon.html").render(root="", page_name="colophon"),
         encoding="utf-8",
     )
 

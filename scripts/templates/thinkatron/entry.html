@@ -6,14 +6,14 @@
     <h1 class="entry-head">{{ entry.head or "Lorem ipsum dolor sit amet consectetur" }}</h1>
     <p class="entry-stand">{{ entry.stand or "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." }}</p>
     <span class="entry-meta">
-      <time>{{ entry.date }}</time>
-      {% if entry.author_tags %}<span class="dot">·</span>{{ entry.author_tags | join(", ") }}
-      {% elif entry.parts and entry.parts[0].passage_used and entry.parts[0].passage_used.poet %}<span class="dot">·</span>{{ entry.parts[0].passage_used.poet }}
+      <time class="meta-date">{{ entry.date | human_date }}</time>
+      {% if entry.author_tags %}<span class="meta-tags">{{ entry.author_tags | join(" · ") }}</span>
+      {% elif entry.parts and entry.parts[0].passage_used and entry.parts[0].passage_used.poet %}<span class="meta-tags">{{ entry.parts[0].passage_used.poet }}</span>
       {% endif %}
     </span>
   </header>
 
-  <div class="section-rule" aria-hidden="true"><span class="fleuron">&#10086;</span></div>
+  <hr class="section-rule" aria-hidden="true">
 
   {% if entry.stimulus %}
   {% if entry.stimulus.mode == "epigraph" %}
