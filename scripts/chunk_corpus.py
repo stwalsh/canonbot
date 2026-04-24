@@ -137,6 +137,11 @@ def normalize_author(author: str) -> str:
     else:
         result = author.strip()
 
+    # Strip parenthetical aliases / descriptors: "Katherine Philips ('Orinda')" → "Katherine Philips"
+    result = re.sub(r"\s*\([^)]*\)\s*", " ", result).strip()
+    # Collapse any doubled whitespace left behind
+    result = re.sub(r"\s+", " ", result)
+
     # Canonical aliases for poets with inconsistent TCP metadata
     return _AUTHOR_ALIASES.get(result, result)
 
@@ -171,6 +176,14 @@ _AUTHOR_ALIASES = {
     "Philip Sidney": "Sir Philip Sidney",
     # Prelude misattribution from Delphi
     "Two Book Prelude: Book II": "William Wordsworth",
+    # Women poets hunt (April 2026) — TCP metadata puts title-of-nobility / married-name last,
+    # which makes the wrong element win as "surname" under the naive reversal.
+    # Cavendish: "Newcastle, Margaret Cavendish, Duchess of" → want "Margaret Cavendish"
+    "Margaret Cavendish Newcastle": "Margaret Cavendish",
+    # Finch: "Winchilsea, Anne Kingsmill Finch, Countess of" → want "Anne Finch"
+    "Anne Kingsmill Finch Winchilsea": "Anne Finch",
+    # Leapor: "Leapor, Mrs. (Mary)" normalises to bare "Leapor" after honorific strip
+    "Leapor": "Mary Leapor",
 }
 
 
@@ -178,11 +191,23 @@ def author_slug(author: str) -> str:
     """Get a short slug from author name for filenames.
 
     Expects an already-normalized name like 'George Herbert'.
-    Takes the last word (surname) as the slug.
+    Takes the last word (surname) as the slug, except for known-collision names
+    which use the full normalized name to avoid file-name clashes.
     """
     # Don't re-normalize — caller should pass already-normalized name
     name = author.strip()
-    return slugify(name.split()[-1]) if name else "unknown"
+    if not name:
+        return "unknown"
+    if name in _DISAMBIGUATE_SLUG:
+        return slugify(name)
+    return slugify(name.split()[-1])
+
+
+# Authors whose surname collides with another poet in the corpus — slug by full name
+_DISAMBIGUATE_SLUG = {
+    "Katherine Philips",
+    "Ambrose Philips",
+}
 
 
 def stanza_text(stanza: dict) -> str:
@@ -417,6 +442,11 @@ def process_file(json_path: str, config: dict) -> list[dict]:
     """Process a single intermediate JSON file into chunks."""
     with open(json_path) as f:
         data = json.load(f)
+
+    # Prose intermediates (Swift, Delphi-prose format) are list-of-works, not
+    # dict-of-poems. They're chunked by chunk_prose.py separately — skip here.
+    if not isinstance(data, dict):
+        return []
 
     metadata = {
         "tcp_id": data.get("tcp_id", ""),

@@ -18,7 +18,7 @@ Then he’s fed a stimulus. This can be anything -- posts, his own thoughts from
 
 He looks at the stimulus and the database and joins the dots and retrieves something.
 
-With a stimulus and retrieval in place, he writes a short piece. Each day a separate model reviews the day's output and decides what is worth keeping. The pieces gathered here are a selection of those, I chose them and you can assume this will stay hand-curated.
+With a stimulus and retrieval in place, he writes a short piece. Each day a separate model reviews the day's output and decides what is worth keeping. The pieces gathered here are a selection of those. I chose them and you can assume this will stay hand-curated.
 
 (Incidentally, this was initially intended to be a Bluesky bot, but that started to feel like a dead end. He spiralled a bit having to read the same left vs liberal arguments over and over every day.)
 

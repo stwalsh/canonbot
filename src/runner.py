@@ -200,43 +200,44 @@ async def run(live: bool = False):
     async for mux_item in multiplex(sources):
         item = mux_item.item
 
-        # End-of-cycle sentinel
+        # End-of-cycle sentinel — any source's cycle end can prompt a self-gen check.
+        # Originally gated on triage-mode only; when Bluesky (the only triage source) was
+        # removed on 18 April, self-gen silently stopped firing. The elapsed-time guard
+        # below is the real throttle.
         if item is None:
-            # Only check self-gen on triage source cycles
-            if mux_item.source.mode == SourceMode.TRIAGE:
-                elapsed = time.time() - last_composition_time
-                if elapsed >= quiet_seconds:
-                    mode = random.choice(self_gen_modes)
-                    print(f"\n  [self] {elapsed:.0f}s without composition — generating ({mode})...")
-                    try:
-                        sg_result = await asyncio.wait_for(
-                            asyncio.to_thread(
-                                engine.self_generate,
-                                mode=mode,
-                                seeds=seeds.as_context_string(),
-                                dry_run=dry_run,
-                            ),
-                            timeout=180,
-                        )
-                        _print_self_result(sg_result)
-                        sg_comp = sg_result.get("composition") or {}
-                        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                        tag = "DRY" if dry_run else "LIVE"
-                        logger.info(
-                            f"\n--- [{now}] [{tag}] [SELF {mode.upper()}] ---\n"
-                            f"Reason: {sg_result.get('search_reason', '')}\n"
-                            f"Decision: {sg_comp.get('decision', 'skip')}\n"
-                            + (("\n".join(f"Post: {p}" for p in sg_comp.get("posts", []))) if sg_comp.get("posts") else "")
-                        )
-                        if sg_comp.get("decision") == "post":
-                            last_composition_time = time.time()
-                            await asyncio.sleep(65)
-                    except asyncio.TimeoutError:
-                        print("  [self] TIMEOUT on self-generation")
-                        last_composition_time = time.time()  # prevent hammering
-                    except Exception as e:
-                        print(f"  [self] ERROR: {e}")
-                        last_composition_time = time.time()  # prevent hammering
+            elapsed = time.time() - last_composition_time
+            if elapsed >= quiet_seconds:
+                mode = random.choice(self_gen_modes)
+                print(f"\n  [self] {elapsed:.0f}s without composition — generating ({mode})...")
+                try:
+                    sg_result = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            engine.self_generate,
+                            mode=mode,
+                            seeds=seeds.as_context_string(),
+                            dry_run=dry_run,
+                        ),
+                        timeout=180,
+                    )
+                    _print_self_result(sg_result)
+                    sg_comp = sg_result.get("composition") or {}
+                    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    tag = "DRY" if dry_run else "LIVE"
+                    logger.info(
+                        f"\n--- [{now}] [{tag}] [SELF {mode.upper()}] ---\n"
+                        f"Reason: {sg_result.get('search_reason', '')}\n"
+                        f"Decision: {sg_comp.get('decision', 'skip')}\n"
+                        + (("\n".join(f"Post: {p}" for p in sg_comp.get("posts", []))) if sg_comp.get("posts") else "")
+                    )
+                    if sg_comp.get("decision") == "post":
+                        last_composition_time = time.time()
+                        await asyncio.sleep(65)
+                except asyncio.TimeoutError:
+                    print("  [self] TIMEOUT on self-generation")
+                    last_composition_time = time.time()  # prevent hammering
+                except Exception as e:
+                    print(f"  [self] ERROR: {e}")
+                    last_composition_time = time.time()  # prevent hammering
             continue
 
         # Seed item: accumulate, and engage if from stimuli_dir

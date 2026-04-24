@@ -148,6 +148,8 @@ def extract_line_text(line_el: etree._Element) -> str:
     text = "".join(parts)
     # Normalize whitespace
     text = re.sub(r"\s+", " ", text).strip()
+    # Normalize long-s (ECCO-TCP preserves it verbatim; hurts retrieval)
+    text = text.replace("ſ", "s")
     return text
 
 
@@ -212,14 +214,17 @@ def extract_poem(div: etree._Element) -> dict | None:
     """
     div_type = div.get("type", "")
 
-    # Try to get poem title from <head>
+    # Try to get poem title from <head>.
+    # Titles often wrap italics in <hi>: "Of <hi>Aire.</hi>" — must use itertext()
+    # unconditionally; head.text only returns text *before* the first child.
     head = div.find("tei:head", NS)
     poem_title = ""
     if head is not None:
-        poem_title = (head.text or "").strip()
-        # Also grab text from children of head
-        if not poem_title:
-            poem_title = "".join(head.itertext()).strip()
+        poem_title = "".join(head.itertext()).strip()
+        # Collapse multi-line / doubled whitespace from element boundaries
+        poem_title = re.sub(r"\s+", " ", poem_title)
+        # Normalize long-s
+        poem_title = poem_title.replace("ſ", "s")
 
     stanzas = []
 
