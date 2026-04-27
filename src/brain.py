@@ -491,7 +491,10 @@ def daily_review(
     response, usage = _safe_api_call(
         client, "daily_review",
         model=DAILY_REVIEW_MODEL,
-        max_tokens=4096,
+        # Bumped 4096→8192 on 27 Apr after multiple zero-publication days
+        # caused by truncated tool-call JSON. Selection + reflection +
+        # self-notes for 30+ entries doesn't fit in 4096 reliably.
+        max_tokens=8192,
         system=soul,
         messages=[{"role": "user", "content": user_msg}],
         tools=[_DAILY_REVIEW_TOOL],

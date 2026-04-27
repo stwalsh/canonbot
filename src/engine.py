@@ -17,6 +17,86 @@ from src.store import Store
 log = logging.getLogger(__name__)
 
 STRATEGIES_FILE = Path("config/oblique_strategies.md")
+DAILY_REVIEW_FAILURE_LOG = Path("data/logs/daily-review-failures.log")
+
+
+def _normalize_selected_ids(raw) -> tuple[list[dict], list]:
+    """Normalise the daily_review tool's `selected_ids` field into a list of dicts.
+
+    Opus has historically returned this in many shapes — list of dicts (intended),
+    list of ints/strings (drop the metadata), JSON string of a list (truncated
+    tool call), nested list. Returns (normalized, dropped) where dropped contains
+    the original items we couldn't make sense of, so callers can log them.
+
+    Each normalised item is `{"id": int, "tier": str, "reason": str}`.
+    """
+    # Top-level: if it's a string, try to parse it as JSON (the truncation case
+    # where the SDK gave us a JSON-encoded string instead of a deserialised list).
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            return [], [raw]
+    if not isinstance(raw, list):
+        return [], [raw]
+
+    normalized: list[dict] = []
+    dropped: list = []
+    for item in raw:
+        # JSON-string-as-item — try to parse before giving up
+        if isinstance(item, str):
+            try:
+                parsed = json.loads(item)
+                item = parsed
+            except (ValueError, TypeError):
+                # Maybe just an integer ID as a string
+                try:
+                    normalized.append({"id": int(item), "tier": "publish", "reason": ""})
+                    continue
+                except (ValueError, TypeError):
+                    dropped.append(item)
+                    continue
+        if isinstance(item, dict):
+            if "id" in item:
+                normalized.append(item)
+            else:
+                dropped.append(item)
+        elif isinstance(item, bool):
+            # bool is an int subclass in Python — guard explicitly
+            dropped.append(item)
+        elif isinstance(item, int):
+            normalized.append({"id": item, "tier": "publish", "reason": ""})
+        elif isinstance(item, list):
+            # One level of flattening — Opus has been seen wrapping the array
+            for sub in item:
+                if isinstance(sub, dict) and "id" in sub:
+                    normalized.append(sub)
+                else:
+                    dropped.append(sub)
+        else:
+            dropped.append(item)
+    return normalized, dropped
+
+
+def _log_review_failure(result: dict, raw_selected, dropped: list) -> None:
+    """Append a failure record to the daily-review-failures log for diagnosis."""
+    try:
+        DAILY_REVIEW_FAILURE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "raw_selected_type": type(raw_selected).__name__,
+            "raw_selected_len": len(raw_selected) if hasattr(raw_selected, "__len__") else None,
+            "dropped_count": len(dropped),
+            "dropped_sample": [str(d)[:120] for d in dropped[:5]],
+            "raw_selected_sample": str(raw_selected)[:600],
+            "result_keys": list(result.keys()) if isinstance(result, dict) else None,
+            "summary_len": len(result.get("summary", "")) if isinstance(result, dict) else 0,
+            "self_notes_len": len(result.get("self_notes", "")) if isinstance(result, dict) else 0,
+        }
+        with DAILY_REVIEW_FAILURE_LOG.open("a") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        log.error("Failed to write review-failure log: %s", e)
 
 
 def _load_strategies() -> list[dict]:
@@ -638,21 +718,20 @@ class Engine:
         usage = result.pop("_usage", {})
 
         # Mark selected entries as published (tiered)
-        selected = result.get("selected_ids", [])
+        selected_raw = result.get("selected_ids", [])
         valid_ids = {ix["id"] for ix in interactions}
         ix_by_id = {ix["id"]: ix for ix in interactions}
 
-        # Normalize selected_ids — Opus sometimes returns strings, ints, or dicts
-        normalized = []
-        for s in selected:
-            if isinstance(s, dict):
-                normalized.append(s)
-            elif isinstance(s, (int, str)):
-                try:
-                    normalized.append({"id": int(s), "tier": "publish", "reason": ""})
-                except (ValueError, TypeError):
-                    pass
-        selected = normalized
+        selected, dropped = _normalize_selected_ids(selected_raw)
+        if dropped:
+            # Persist the raw failure for diagnosis. The 24-26 April outages
+            # were exactly this — selected_ids came back as a JSON-string,
+            # and char-by-char iteration silently dropped everything.
+            _log_review_failure(result, selected_raw, dropped)
+            log.warning(
+                "Daily review normaliser dropped %d items (kept %d). Raw shape logged.",
+                len(dropped), len(selected),
+            )
 
         publish_ids = [s["id"] for s in selected if s.get("tier") == "publish" and s.get("id") in valid_ids]
         notebook_ids = [s["id"] for s in selected if s.get("tier") == "notebook" and s.get("id") in valid_ids]
