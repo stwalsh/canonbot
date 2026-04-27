@@ -15,6 +15,10 @@
       "head": "Ego and the ballads",
       "stand": "A three-part argument about what survives when the author dissolves — from Sweet William's Ghost through Love Gregor to Dryden's refusal of the whole premise.",
       "author_tags": ["Clare", "Traditional Medieval Ballads", "Dryden"]
+    },
+    "difficulty": {
+      "ids": ["24936", "24987", "24985", "24999", "25000", "25013", "25024"],
+      "author_tags": ["Blake", "Barrett Browning", "Spenser", "Pope", "Dryden", "Byron"]
     }
   },
 
